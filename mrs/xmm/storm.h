@@ -17,24 +17,11 @@
 #include <stdint.h>
 #include "storm_config.h"
 
-#if STORM_W == 64
-	typedef uint64_t storm_word_t;
-#else
-	#error "Invalid word size!"
-#endif
-
-typedef struct state__
-{
-    storm_word_t S[16];
-} storm_state_t[1];
-
-
 /* high-level operations */
 void storm_aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *m, size_t mlen,
-        const unsigned char *t, size_t tlen,
         const unsigned char *nonce,
         const unsigned char *key);
 
@@ -42,7 +29,6 @@ int storm_aead_decrypt(
         unsigned char *m, size_t *mlen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
-        const unsigned char *t, size_t tlen,
         const unsigned char *nonce,
         const unsigned char *key);
 

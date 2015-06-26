@@ -412,7 +412,6 @@ void storm_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *p, size_t mlen,
-    const unsigned char *t, size_t tlen,
     const unsigned char *nonce,
     const unsigned char *key
     )
@@ -428,7 +427,6 @@ void storm_aead_encrypt(
     INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, N, K0, K1, ABS_INIT_TAG);
     ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, h, hlen, ABS_HEADER_TAG);
     ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, p, mlen, ABS_PAYLOAD_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, t, tlen, ABS_TRAILER_TAG);
     FINALISE(A0, A1, B0, B1, C0, C1, D0, D1);
     STOREU(c + mlen +                0, A0);
     STOREU(c + mlen + BYTES(STORM_T)/2, A1);
@@ -443,7 +441,6 @@ int storm_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,
-    const unsigned char *t, size_t tlen,
     const unsigned char *nonce,
     const unsigned char *key
     )
@@ -466,7 +463,6 @@ int storm_aead_decrypt(
     INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, N, K0, K1, ABS_INIT_TAG);
     ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, h, hlen, ABS_HEADER_TAG);
     ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, m, *mlen, ABS_PAYLOAD_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, t, tlen, ABS_TRAILER_TAG);
     FINALISE(A0, A1, B0, B1, C0, C1, D0, D1);
 
     /* verify tag */

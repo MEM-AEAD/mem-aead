@@ -383,7 +383,6 @@ void storm_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *m, size_t mlen,
-    const unsigned char *t, size_t tlen,
     const unsigned char *nonce,
     const unsigned char *key
     )
@@ -393,7 +392,6 @@ void storm_aead_encrypt(
     storm_init(state, key, nonce, ABS_INIT_TAG);
     storm_absorb_data(state, h, hlen, ABS_HEADER_TAG);
     storm_absorb_data(state, m, mlen, ABS_PAYLOAD_TAG);
-    storm_absorb_data(state, t, tlen, ABS_TRAILER_TAG);
     storm_output_tag(state, c + mlen);
     *clen = mlen + BYTES(STORM_T);
 
@@ -408,7 +406,6 @@ int storm_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,
-    const unsigned char *t, size_t tlen,
     const unsigned char *nonce,
     const unsigned char *key
     )
@@ -430,7 +427,6 @@ int storm_aead_decrypt(
     storm_init(state, key, nonce, ABS_INIT_TAG);
     storm_absorb_data(state, h, hlen, ABS_HEADER_TAG);
     storm_absorb_data(state, m, *mlen, ABS_PAYLOAD_TAG);
-    storm_absorb_data(state, t, tlen, ABS_TRAILER_TAG);
     storm_output_tag(state, tag);
 
     /* verification phase */

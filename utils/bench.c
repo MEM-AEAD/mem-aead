@@ -21,7 +21,6 @@ void storm_aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *p, size_t plen,
-        const unsigned char *t, size_t tlen,
         const unsigned char *nonce,
         const unsigned char *key);
 
@@ -29,7 +28,6 @@ int storm_aead_decrypt(
         unsigned char *p, size_t *plen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
-        const unsigned char *t, size_t tlen,
         const unsigned char *nonce,
         const unsigned char *key);
 
@@ -153,7 +151,7 @@ void bench()
     for( i = 0; i <= BENCH_TRIALS; ++i )
     {
       cycles[i] = cpucycles();
-      storm_aead_encrypt(out, &outlen, ad, adlen, in, j, NULL, 0, n, k);
+      storm_aead_encrypt(out, &outlen, ad, adlen, in, j, n, k);
     }
 
     for( i = 0; i < BENCH_TRIALS; ++i )

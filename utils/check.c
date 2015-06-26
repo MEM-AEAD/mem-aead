@@ -21,7 +21,6 @@ void storm_aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *p, size_t plen,
-        const unsigned char *t, size_t tlen,
         const unsigned char *nonce,
         const unsigned char *key);
 
@@ -29,7 +28,6 @@ int storm_aead_decrypt(
         unsigned char *p, size_t *plen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
-        const unsigned char *t, size_t tlen,
         const unsigned char *nonce,
         const unsigned char *key);
 
@@ -70,13 +68,13 @@ int check(const unsigned char *kat)
         clen = 0;
         mlen = hlen = i;
 
-        storm_aead_encrypt(c, &clen, h, hlen, m, mlen, NULL, 0, n, k);
+        storm_aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
         if( 0 != memcmp(kat, c, clen) ) {place = 1; goto fail;}
 
         memset(m, 0, sizeof m);
         mlen = 0;
 
-        if( 0 != storm_aead_decrypt(m, &mlen, h, hlen, c, clen, NULL, 0, n, k) )
+        if( 0 != storm_aead_decrypt(m, &mlen, h, hlen, c, clen, n, k) )
             {place = 2; goto fail;}
 
         if( 0 != memcmp(m, w, mlen) ) {place = 3; goto fail;}
