@@ -138,7 +138,7 @@ static STORM_INLINE void storm_pad(uint8_t * out, const uint8_t * in, const size
     out[BYTES(RATE) - 1] |= 0x80;
 }
 
-static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char * k, const unsigned char * n, const size_t nlen, tag_t tag)
+static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char * k, const unsigned char * iv, const size_t ivlen, tag_t tag)
 {
     size_t i;
     storm_word_t * S = key->S;
@@ -147,8 +147,8 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
     memset(key, 0, sizeof(storm_state_t));
 
     /* load nonce/tag */
-    for(i = 0; i < nlen; ++i) {
-        S[i] = LOAD(n + i * BYTES(STORM_W));
+    for(i = 0; i < ivlen; ++i) {
+        S[i] = LOAD(iv + i * BYTES(STORM_W));
     }
 
     /* load key */
@@ -190,7 +190,7 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, const storm_sta
 
     /* XOR block and key kx */
     for (i = 0; i < WORDS(STORM_B); ++i) {
-        BLK[i] ^= KX[i];
+          BLK[i] ^= KX[i];
     }
 
     /* apply permutation */
@@ -202,7 +202,7 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, const storm_sta
     }
 
 #if defined(STORM_DEBUG)
-    printf("ABSORBING BLOCK #%u\n", block_nr);
+    printf("ABSORBING BLOCK #%lu\n", block_nr);
     printf("IN:\n");
     print_bytes(in, BYTES(RATE));
     printf("\nSTATE:\n");
@@ -222,7 +222,8 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block
     BLK[15] = block_nr;
 
     /* XOR block and key k */
-    for (i = 0; i < WORDS(STORM_B); ++i) {
+    for (i = 0; i < WORDS(STORM_B); ++i)
+    {
         BLK[i] ^= K[i];
     }
 
@@ -237,7 +238,7 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block
     }
 
 #if defined(STORM_DEBUG)
-    printf("ENCRYPTING BLOCK\n");
+    printf("ENCRYPTING BLOCK #%lu\n", block_nr);
     printf("IN:\n");
     print_bytes(in, BYTES(STORM_B));
     printf("OUT:\n");
@@ -409,5 +410,3 @@ int storm_aead_decrypt(
 
     return result;
 }
-
-/* 3827 */
