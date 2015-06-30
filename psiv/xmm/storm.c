@@ -207,7 +207,8 @@ do                                                 \
 } while(0)
 
 #define ABSORB_BLOCK(S, K, BLOCK_NR, IN)                                \
-do {                                                                    \
+do                                                                      \
+{                                                                       \
     __m128i X[8];                                                       \
     X[0] = XOR(K[0], LOADU(IN +  0));                                   \
     X[1] = XOR(K[1], LOADU(IN + 16));                                   \
