@@ -216,7 +216,7 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t k
     }
 
 #if defined(STORM_DEBUG)
-    printf("ABSORBING BLOCK #%lu\n", block_nr);
+    printf("ABSORBING BLOCK\n");
     printf("IN:\n");
     print_bytes(in, BYTES(STORM_B));
     printf("\nSTATE:\n");
@@ -252,7 +252,7 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block
     }
 
 #if defined(STORM_DEBUG)
-    printf("ENCRYPTING BLOCK #%lu\n", block_nr);
+    printf("ENCRYPTING BLOCK\n");
     printf("IN:\n");
     print_bytes(in, BYTES(STORM_B));
     printf("OUT:\n");
