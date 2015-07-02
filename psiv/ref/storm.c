@@ -28,8 +28,6 @@
     #define STORM_N (STORM_W *  2)   /* nonce size */
     #define STORM_K (STORM_W *  4)   /* key size */
     #define STORM_B (STORM_W * 16)   /* permutation width */
-    #define STORM_C (STORM_W *  1)   /* capacity */
-    #define RATE (STORM_B - STORM_C) /* rate */
 
     /* Rotation constants (BLAKE2) */
     #define R0 32
@@ -104,16 +102,17 @@ static void print_state(storm_state_t state)
 static void print_bytes(const uint8_t * in, size_t inlen)
 {
     size_t i;
-    for (i = 0; i < inlen; ++i) {
+    for (i = 0; i < inlen; ++i)
+    {
         printf("%02X ", in[i]);
-        if (i%16 == 15) {
+        if (i%16 == 15)
+        {
             printf("\n");
         }
     }
     printf("\n");
 }
 #endif
-
 
 typedef enum tag__
 {
@@ -127,15 +126,18 @@ static STORM_INLINE void storm_permutation(storm_state_t state, size_t R)
 {
     storm_word_t * S = state->S;
     size_t i;
-    for(i = 0; i < R; ++i) { F(S); }
+    for(i = 0; i < R; ++i)
+    {
+        F(S);
+    }
 }
 
 static STORM_INLINE void storm_pad(uint8_t * out, const uint8_t * in, const size_t inlen)
 {
-    memset(out, 0, BYTES(RATE));
+    memset(out, 0, BYTES(STORM_B));
     memcpy(out, in, inlen);
     out[inlen] = 0x01;
-    out[BYTES(RATE) - 1] |= 0x80;
+    out[BYTES(STORM_B) - 1] |= 0x80;
 }
 
 static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char * k, const unsigned char * iv, const size_t ivlen, tag_t tag)
@@ -147,7 +149,8 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
     memset(key, 0, sizeof(storm_state_t));
 
     /* load nonce/tag */
-    for(i = 0; i < ivlen; ++i) {
+    for(i = 0; i < ivlen; ++i)
+    {
         S[i] = LOAD(iv + i * BYTES(STORM_W));
     }
 
@@ -173,7 +176,19 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
 
 }
 
-static STORM_INLINE void storm_absorb_block(storm_state_t state, const storm_state_t kx, size_t block_nr, const uint8_t * in)
+static STORM_INLINE void storm_update_key(storm_state_t key)
+{
+    size_t i;
+    storm_word_t * S = key->S;
+    storm_word_t t = ROTR(S[0], 9) ^ (S[9] >> 7);
+    for (i = 0; i < WORDS(STORM_B) - 1; ++i)
+    {
+        S[i] = S[i+1];
+    }
+    S[15] = t;
+}
+
+static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t kx, const uint8_t * in)
 {
     size_t i;
     storm_state_t block;
@@ -181,30 +196,29 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, const storm_sta
     storm_word_t * S = state->S; /* K0 */
     const storm_word_t * KX = kx->S; /* K1 or K2 */
 
+    /* update key using a LFSR */
+    storm_update_key(kx);
+
     /* load data and block counter */
     memset(block, 0, sizeof(storm_state_t));
-    for (i = 0; i < WORDS(RATE); ++i) {
-        BLK[i] = LOAD(in + i * BYTES(STORM_W));
-    }
-    BLK[15] = block_nr;
-
-    /* XOR block and key kx */
-    for (i = 0; i < WORDS(STORM_B); ++i) {
-          BLK[i] ^= KX[i];
+    for (i = 0; i < WORDS(STORM_B); ++i)
+    {
+        BLK[i] = LOAD(in + i * BYTES(STORM_W)) ^ KX[i];
     }
 
     /* apply permutation */
     storm_permutation(block, STORM_R);
 
     /* absorb into K0 */
-    for (i = 0; i < WORDS(STORM_B); ++i) {
+    for (i = 0; i < WORDS(STORM_B); ++i)
+    {
         S[i] ^=  BLK[i];
     }
 
 #if defined(STORM_DEBUG)
     printf("ABSORBING BLOCK #%lu\n", block_nr);
     printf("IN:\n");
-    print_bytes(in, BYTES(RATE));
+    print_bytes(in, BYTES(STORM_B));
     printf("\nSTATE:\n");
     print_state(state);
 #endif
@@ -247,22 +261,20 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block
 }
 
 /* low-level interface functions */
-void storm_absorb_data(storm_state_t state, const storm_state_t kx, const unsigned char * in, size_t inlen)
+void storm_absorb_data(storm_state_t state, storm_state_t kx, const unsigned char * in, size_t inlen)
 {
     if(inlen > 0)
     {
-        size_t i = 0;
-        uint8_t lastblock[BYTES(RATE)];
-        while (inlen >= BYTES(RATE))
+        uint8_t lastblock[BYTES(STORM_B)];
+        while (inlen >= BYTES(STORM_B))
         {
-            storm_absorb_block(state, kx, i, in);
-            inlen -= BYTES(RATE);
-            in    += BYTES(RATE);
-            i += 1;
+            storm_absorb_block(state, kx, in);
+            inlen -= BYTES(STORM_B);
+            in    += BYTES(STORM_B);
         }
         storm_pad(lastblock, in, inlen);
-        storm_absorb_block(state, kx, i, lastblock);
-        burn(lastblock, 0, BYTES(RATE));
+        storm_absorb_block(state, kx, lastblock);
+        burn(lastblock, 0, BYTES(STORM_B));
     }
 }
 
@@ -302,7 +314,8 @@ void storm_squeeze_tag(storm_state_t state, unsigned char * tag)
     storm_permutation(state, STORM_R);
 
     /* squeeze tag (TODO: do it sponge-like) */
-    for (i = 0; i < WORDS(STORM_B - STORM_K); ++i) {
+    for (i = 0; i < WORDS(STORM_B - STORM_K); ++i)
+    {
         STORE(block + i * BYTES(STORM_W), S[i]);
     }
     memcpy(tag, block, BYTES(STORM_T));
@@ -321,11 +334,13 @@ int storm_verify_tag(const unsigned char * tag1, const unsigned char * tag2)
     unsigned acc = 0;
     size_t i;
 
-    for(i = 0; i < BYTES(STORM_T); ++i) {
+    for(i = 0; i < BYTES(STORM_T); ++i)
+    {
         acc |= tag1[i] ^ tag2[i];
     }
     return (((acc - 1) >> 8) & 1) - 1;
 }
+
 
 /* high level interface functions */
 void storm_aead_encrypt(
@@ -400,7 +415,8 @@ int storm_aead_decrypt(
     result = storm_verify_tag(c + clen - BYTES(STORM_T), tag);
 
     /* burn decrypted plaintext on authentication failure */
-    if(result != 0) {
+    if(result != 0)
+    {
         burn(m, 0, *mlen);
     }
 
