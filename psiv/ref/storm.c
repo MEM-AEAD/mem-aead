@@ -194,7 +194,7 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t k
     storm_state_t block;
     storm_word_t * BLK = block->S;
     storm_word_t * S = state->S; /* K0 */
-    const storm_word_t * KX = kx->S; /* K1 or K2 */
+    storm_word_t * KX = kx->S; /* K1 or K2 */
 
     /* update key using a LFSR */
     storm_update_key(kx);
@@ -322,7 +322,7 @@ void storm_squeeze_tag(storm_state_t state, unsigned char * tag)
     burn(block, 0, BYTES(STORM_B - STORM_K));
 
 #if defined(STORM_DEBUG)
-    printf("FINALISED:\n");
+    printf("EXTRACTING TAG:\n");
     print_state(state);
     printf("TAG:\n");
     print_bytes(tag, BYTES(STORM_T));
