@@ -143,8 +143,10 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
     size_t i;
     storm_word_t * S = key->S;
 
-    /* init */
-    memset(key, 0, sizeof(storm_state_t));
+    S[ 0] = 0;
+    S[ 1] = 0;
+    S[ 2] = 0;
+    S[ 3] = 0;
 
     /* load nonce/tag */
     for(i = 0; i < ivlen; ++i)
@@ -158,11 +160,16 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
     S[ 6] = LOAD(k + 2 * BYTES(STORM_W));
     S[ 7] = LOAD(k + 3 * BYTES(STORM_W));
 
+    S[ 8] = 0;
+    S[ 9] = 0;
+    S[10] = 0;
+    S[11] = 0;
+
     /* inject parameters */
-    S[12] ^= STORM_W;
-    S[13] ^= STORM_R;
-    S[14] ^= STORM_T;
-    S[15] ^= tag;
+    S[12] = STORM_W;
+    S[13] = STORM_R;
+    S[14] = STORM_T;
+    S[15] = tag;
 
     /* apply permutation */
     storm_permutation(key, STORM_R);
