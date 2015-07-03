@@ -116,10 +116,8 @@ static void print_bytes(const uint8_t * in, size_t inlen)
 
 typedef enum tag__
 {
-    ABS_INIT_TAG     = 0x00,
-    ABS_HEADER_TAG   = 0x01,
-    ABS_MESSAGE_TAG  = 0x02,
-    ENC_TAG          = 0x13
+    ABS_TAG     = 0x00,
+    ENC_TAG     = 0x10
 } tag_t;
 
 static STORM_INLINE void storm_permutation(storm_state_t state, size_t R)
@@ -193,10 +191,10 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t k
     size_t i;
     storm_state_t block;
     storm_word_t * BLK = block->S;
-    storm_word_t * S = state->S; /* K0 */
-    storm_word_t * KX = kx->S; /* K1 or K2 */
+    storm_word_t * S = state->S; /* K_a */
+    storm_word_t * KX = kx->S; /* phi**{i}(K_a) */
 
-    /* update key using a LFSR */
+    /* update key */
     storm_update_key(kx);
 
     /* load data and block counter */
@@ -352,24 +350,24 @@ void storm_aead_encrypt(
     )
 {
     storm_state_t state, k;
+    storm_word_t * S = state->S;
 
-    /* setup state */
-    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_INIT_TAG);
-
-    /* absorb header */
-    storm_load_key(k, key, nonce, WORDS(STORM_N), ABS_HEADER_TAG);
+    /* absorb header and message */
+    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
+    memcpy(k, state, sizeof(storm_state_t)); /* phi**{i}(K_a) */
     storm_absorb_data(state, k, h, hlen);
-
-    /* absorb message */
-    storm_load_key(k, key, nonce, WORDS(STORM_N), ABS_MESSAGE_TAG);
     storm_absorb_data(state, k, m, mlen);
+
+    /* add length encoding */
+    S[14] ^= hlen;
+    S[15] ^= mlen;
 
     /* extract tag */
     storm_squeeze_tag(state, c + mlen);
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
-    storm_load_key(k, key, c + mlen, WORDS(STORM_T), ENC_TAG);
+    storm_load_key(k, key, c + mlen, WORDS(STORM_T), ENC_TAG); /* K_e */
     storm_encrypt_data(k, c, m, mlen);
 
     /* empty buffers */
@@ -388,25 +386,25 @@ int storm_aead_decrypt(
     int result = -1;
     unsigned char tag[BYTES(STORM_T)];
     storm_state_t state, k;
+    storm_word_t * S = state->S;
 
     if (clen < BYTES(STORM_T))
         return -1;
 
     /* decrypt message */
-    storm_load_key(k, key, c + clen - BYTES(STORM_T), WORDS(STORM_T), ENC_TAG);
+    storm_load_key(k, key, c + clen - BYTES(STORM_T), WORDS(STORM_T), ENC_TAG); /* K_e */
     storm_decrypt_data(k, m, c, clen - BYTES(STORM_T));
     *mlen = clen - BYTES(STORM_T);
 
-    /* setup state */
-    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_INIT_TAG);
-
-    /* absorb header */
-    storm_load_key(k, key, nonce, WORDS(STORM_N), ABS_HEADER_TAG);
+    /* absorb header and message */
+    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
+    memcpy(k, state, sizeof(storm_state_t)); /* phi**{i}(K_a) */
     storm_absorb_data(state, k, h, hlen);
-
-    /* absorb message */
-    storm_load_key(k, key, nonce, WORDS(STORM_N), ABS_MESSAGE_TAG);
     storm_absorb_data(state, k, m, *mlen);
+
+    /* add length encoding */
+    S[14] ^= hlen;
+    S[15] ^= *mlen;
 
     /* extract tag */
     storm_squeeze_tag(state, tag);
