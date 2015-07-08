@@ -13,7 +13,7 @@ benchM4:
 	@rm bench
 
 benchM256:
-	@$(CC) $(CFLAGS) -DM4 -o bench ../../utils/bench.c storm.c
+	@$(CC) $(CFLAGS) -DM256 -o bench ../../utils/bench.c storm.c
 	@./bench
 	@rm bench
 
