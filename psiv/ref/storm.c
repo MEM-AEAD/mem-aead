@@ -214,27 +214,30 @@ static STORM_INLINE void storm_update_key(storm_state_t key)
 static STORM_INLINE void storm_update_key(storm_state_t key)
 {
     storm_word_t * S = key->S;
-    storm_word_t t0 = ROTR(S[0], 61) ^ (S[ 3] >> 5);
+    storm_word_t t0 = S[1];
+    storm_word_t t1 = S[2];
+    storm_word_t t2 = S[3];
+    storm_word_t t3 = ROTR(S[0], 61) ^ (S[ 3] >> 5);
 
-    S[ 0] = S[1];
-    S[ 1] = S[2];
-    S[ 2] = S[3];
-    S[ 3] = t0;
+    S[ 0] = t0;
+    S[ 1] = t1;
+    S[ 2] = t2;
+    S[ 3] = t3;
 
-    S[ 4] = S[1];
-    S[ 5] = S[2];
-    S[ 6] = S[3];
-    S[ 7] = t0;
+    S[ 4] = t0;
+    S[ 5] = t1;
+    S[ 6] = t2;
+    S[ 7] = t3;
 
-    S[ 8] = S[1];
-    S[ 9] = S[2];
-    S[10] = S[3];
-    S[11] = t0;
+    S[ 8] = t0;
+    S[ 9] = t1;
+    S[10] = t2;
+    S[11] = t3;
 
-    S[12] = S[1];
-    S[13] = S[2];
-    S[14] = S[3];
-    S[15] = t0;
+    S[12] = t0;
+    S[13] = t1;
+    S[14] = t2;
+    S[15] = t3;
 }
 #else
 static STORM_INLINE void storm_update_key(storm_state_t key)
