@@ -185,13 +185,56 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
 static STORM_INLINE void storm_update_key(storm_state_t key)
 {
     storm_word_t * S = key->S;
-    storm_word_t t0 = ROTR(S[0], 9) ^ (S[ 9] << 7);
-    storm_word_t t1 = ROTR(S[1], 9) ^ (S[10] << 7);
-    storm_word_t t2 = ROTR(S[2], 9) ^ (S[11] << 7);
-    storm_word_t t3 = ROTR(S[3], 9) ^ (S[12] << 7);
-    S[ 0] = S[ 4], S[ 1] = S[ 5], S[ 2] = S[ 6], S[ 3] = S[ 7];
-    S[ 5] = S[ 9], S[ 6] = S[10], S[ 7] = S[11], S[ 8] = S[12];
-    S[12] = t0,    S[13] = t1,    S[14] = t2,    S[15] = t3;
+    storm_word_t t0 = ROTR(S[0], 9) ^ (S[ 9] >> 7);
+    storm_word_t t1 = ROTR(S[1], 9) ^ (S[10] >> 7);
+    storm_word_t t2 = ROTR(S[2], 9) ^ (S[11] >> 7);
+    storm_word_t t3 = ROTR(S[3], 9) ^ (S[12] >> 7);
+
+    S[ 0] = S[ 4];
+    S[ 1] = S[ 5];
+    S[ 2] = S[ 6];
+    S[ 3] = S[ 7];
+
+    S[ 4] = S[ 8];
+    S[ 5] = S[ 9];
+    S[ 6] = S[10];
+    S[ 7] = S[11];
+
+    S[ 8] = S[12];
+    S[ 9] = S[13];
+    S[10] = S[14];
+    S[11] = S[15];
+
+    S[12] = t0;
+    S[13] = t1;
+    S[14] = t2;
+    S[15] = t3;
+}
+#elif defined(M256)
+static STORM_INLINE void storm_update_key(storm_state_t key)
+{
+    storm_word_t * S = key->S;
+    storm_word_t t0 = ROTR(S[0], 61) ^ (S[ 3] >> 5);
+
+    S[ 0] = S[1];
+    S[ 1] = S[2];
+    S[ 2] = S[3];
+    S[ 3] = t0;
+
+    S[ 4] = S[1];
+    S[ 5] = S[2];
+    S[ 6] = S[3];
+    S[ 7] = t0;
+
+    S[ 8] = S[1];
+    S[ 9] = S[2];
+    S[10] = S[3];
+    S[11] = t0;
+
+    S[12] = S[1];
+    S[13] = S[2];
+    S[14] = S[3];
+    S[15] = t0;
 }
 #else
 static STORM_INLINE void storm_update_key(storm_state_t key)
