@@ -181,6 +181,19 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
 
 }
 
+#if defined(M4)
+static STORM_INLINE void storm_update_key(storm_state_t key)
+{
+    storm_word_t * S = key->S;
+    storm_word_t t0 = ROTR(S[0], 9) ^ (S[ 9] << 7);
+    storm_word_t t1 = ROTR(S[1], 9) ^ (S[10] << 7);
+    storm_word_t t2 = ROTR(S[2], 9) ^ (S[11] << 7);
+    storm_word_t t3 = ROTR(S[3], 9) ^ (S[12] << 7);
+    S[ 0] = S[ 4], S[ 1] = S[ 5], S[ 2] = S[ 6], S[ 3] = S[ 7];
+    S[ 5] = S[ 9], S[ 6] = S[10], S[ 7] = S[11], S[ 8] = S[12];
+    S[12] = t0,    S[13] = t1,    S[14] = t2,    S[15] = t3;
+}
+#else
 static STORM_INLINE void storm_update_key(storm_state_t key)
 {
     size_t i;
@@ -192,6 +205,7 @@ static STORM_INLINE void storm_update_key(storm_state_t key)
     }
     S[15] = t;
 }
+#endif
 
 static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t kx, const uint8_t * in)
 {
