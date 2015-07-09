@@ -370,7 +370,7 @@ void storm_aead_encrypt(
 
     /* absorb header and message */
     LOAD_KEY(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* K_a */
-    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* phi**{i}(K_a) */
+    memcpy(K, S, 8 * sizeof(__m128i)); /* phi**{i}(K_a) */
     ABSORB_DATA(S, K, h, hlen);
     ABSORB_DATA(S, K, m, mlen);
 
@@ -409,7 +409,7 @@ int storm_aead_decrypt(
 
     /* absorb header and message */
     LOAD_KEY(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* K_a */
-    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* phi**{i}(K_a) */
+    memcpy(K, S, 8 * sizeof(__m128i)); /* phi**{i}(K_a) */
     ABSORB_DATA(S, K, h, hlen);
     ABSORB_DATA(S, K, m, *mlen);
 
