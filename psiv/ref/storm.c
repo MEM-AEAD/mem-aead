@@ -289,6 +289,14 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t k
 #endif
 }
 
+static STORM_INLINE void storm_absorb_lastblock(storm_state_t state, storm_state_t kx, const uint8_t * in, size_t inlen)
+{
+    uint8_t block[BYTES(STORM_B)];
+    storm_pad(block, in, inlen);
+    storm_absorb_block(state, kx, block);
+    burn(block, 0, BYTES(STORM_B));
+}
+
 static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block_nr, uint8_t * out, const uint8_t * in)
 {
     size_t i;
@@ -296,15 +304,12 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block
     storm_word_t * BLK = block->S;
     const storm_word_t * K = k->S;
 
-    /* load block counter */
-    memset(block, 0, sizeof(storm_state_t));
-    BLK[15] = block_nr;
-
-    /* XOR block and key k */
+    /* Load key and XOR block counter */
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
-        BLK[i] ^= K[i];
+        BLK[i] = K[i];
     }
+    BLK[15] ^= block_nr;
 
     /* apply permutation */
     storm_permutation(block, STORM_R);
@@ -325,21 +330,28 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t k, size_t block
 #endif
 }
 
+static STORM_INLINE void storm_encrypt_lastblock(const storm_state_t k, size_t block_nr, uint8_t * out, const uint8_t * in, size_t inlen)
+{
+    uint8_t block[BYTES(STORM_B)];
+    memset(block, 0, BYTES(STORM_B));
+    memcpy(block, in, inlen);
+    storm_encrypt_block(k, block_nr, block, block);
+    memcpy(out, block, inlen);
+    burn(block, 0, BYTES(STORM_B));
+}
+
 /* low-level interface functions */
 void storm_absorb_data(storm_state_t state, storm_state_t kx, const unsigned char * in, size_t inlen)
 {
     if(inlen > 0)
     {
-        uint8_t lastblock[BYTES(STORM_B)];
         while (inlen >= BYTES(STORM_B))
         {
             storm_absorb_block(state, kx, in);
             inlen -= BYTES(STORM_B);
             in    += BYTES(STORM_B);
         }
-        storm_pad(lastblock, in, inlen);
-        storm_absorb_block(state, kx, lastblock);
-        burn(lastblock, 0, BYTES(STORM_B));
+        storm_absorb_lastblock(state, kx, in, inlen);
     }
 }
 
@@ -348,7 +360,6 @@ void storm_encrypt_data(const storm_state_t k, unsigned char * out, const unsign
     if(inlen > 0)
     {
         size_t i = 0;
-        uint8_t lastblock[BYTES(STORM_B)];
         while (inlen >= BYTES(STORM_B))
         {
             storm_encrypt_block(k, i, out, in);
@@ -357,11 +368,7 @@ void storm_encrypt_data(const storm_state_t k, unsigned char * out, const unsign
             out   += BYTES(STORM_B);
             i += 1;
         }
-        memset(lastblock, 0, BYTES(STORM_B));
-        memcpy(lastblock, in, inlen);
-        storm_encrypt_block(k, i, lastblock, lastblock);
-        memcpy(out, lastblock, inlen);
-        burn(lastblock, 0, BYTES(STORM_B));
+        storm_encrypt_lastblock(k, i, out, in, inlen);
     }
 }
 
@@ -420,6 +427,11 @@ void storm_aead_encrypt(
     storm_word_t * S = state->S;
 
     /* absorb header and message */
+#if defined(STORM_DEBUG)
+    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
+    storm_update_key(state);
+    print_state(state);
+#endif
     storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
     memcpy(k, state, sizeof(storm_state_t)); /* phi**{i}(K_a) */
     storm_absorb_data(state, k, h, hlen);

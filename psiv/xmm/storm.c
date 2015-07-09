@@ -22,8 +22,6 @@
 #define STORM_N (STORM_W *  2)   /* nonce size */
 #define STORM_K (STORM_W *  4)   /* key size */
 #define STORM_B (STORM_W * 16)   /* permutation width */
-#define STORM_C (STORM_W *  1)   /* capacity */
-#define RATE (STORM_B - STORM_C) /* rate */
 
 #define BYTES(x) (((x) + 7) / 8)
 #define WORDS(x) (((x) + (STORM_W-1)) / STORM_W)
@@ -206,35 +204,71 @@ do                                                 \
     PERMUTE(K);                                    \
 } while(0)
 
-#define ABSORB_BLOCK(S, K, BLOCK_NR, IN)                                \
-do                                                                      \
-{                                                                       \
-    __m128i X[8];                                                       \
-    X[0] = XOR(K[0], LOADU(IN +  0));                                   \
-    X[1] = XOR(K[1], LOADU(IN + 16));                                   \
-    X[2] = XOR(K[2], LOADU(IN + 32));                                   \
-    X[3] = XOR(K[3], LOADU(IN + 48));                                   \
-    X[4] = XOR(K[4], LOADU(IN + 64));                                   \
-    X[5] = XOR(K[5], LOADU(IN + 80));                                   \
-    X[6] = XOR(K[6], LOADU(IN + 96));                                   \
-    X[7] = XOR(K[7], XOR(_mm_set_epi64x(BLOCK_NR,0), LOADL(IN + 112))); \
-    PERMUTE(X);                                                         \
-    S[0] = XOR(S[0], X[0]);                                             \
-    S[1] = XOR(S[1], X[1]);                                             \
-    S[2] = XOR(S[2], X[2]);                                             \
-    S[3] = XOR(S[3], X[3]);                                             \
-    S[4] = XOR(S[4], X[4]);                                             \
-    S[5] = XOR(S[5], X[5]);                                             \
-    S[6] = XOR(S[6], X[6]);                                             \
-    S[7] = XOR(S[7], X[7]);                                             \
+
+#if defined(M4)
+#define UPDATE_KEY(K)                                                        \
+do                                                                           \
+{                                                                            \
+    __m128i T00, T01, T10, T11, T20, T21, T30, T31;                          \
+    T00 = _mm_xor_si128(_mm_slli_epi64(K[0], 53), _mm_srli_epi64(K[0], 11)); \
+    T01 = _mm_xor_si128(_mm_slli_epi64(K[1], 53), _mm_srli_epi64(K[1], 11)); \
+    T10 = _mm_alignr_epi8(K[3], K[2], 8);                                    \
+    T11 = _mm_alignr_epi8(K[4], K[3], 8);                                    \
+    T20 = _mm_slli_epi64(T10, 13);                                           \
+    T21 = _mm_slli_epi64(T11, 13);                                           \
+    T30 = _mm_xor_si128(T20, T00);                                           \
+    T31 = _mm_xor_si128(T21, T01);                                           \
+    K[0] = K[2]; K[1] = K[3];                                                \
+    K[2] = K[4]; K[3] = K[5];                                                \
+    K[4] = K[6]; K[5] = K[7];                                                \
+    K[6] = T30;  K[7] = T31;                                                 \
+} while(0)
+#else
+#define UPDATE_KEY(K)                                                                                   \
+do                                                                                                      \
+{                                                                                                       \
+    __m128i T = XOR(ROT(_mm_set_epi64x(0, K[0][0]), 9), _mm_srli_epi64(_mm_set_epi64x(0, K[4][1]), 7)); \
+    K[0] = _mm_set_epi64x(K[1][0], K[0][1]);                                                            \
+    K[1] = _mm_set_epi64x(K[2][0], K[1][1]);                                                            \
+    K[2] = _mm_set_epi64x(K[3][0], K[2][1]);                                                            \
+    K[3] = _mm_set_epi64x(K[4][0], K[3][1]);                                                            \
+    K[4] = _mm_set_epi64x(K[5][0], K[4][1]);                                                            \
+    K[5] = _mm_set_epi64x(K[6][0], K[5][1]);                                                            \
+    K[6] = _mm_set_epi64x(K[7][0], K[6][1]);                                                            \
+    K[7] = _mm_set_epi64x(T[0],    K[7][1]);                                                            \
+} while(0)
+#endif
+
+#define ABSORB_BLOCK(S, K, IN)         \
+do                                     \
+{                                      \
+    __m128i X[8];                      \
+    UPDATE_KEY(K);                     \
+    X[0] = XOR(K[0], LOADU(IN +   0)); \
+    X[1] = XOR(K[1], LOADU(IN +  16)); \
+    X[2] = XOR(K[2], LOADU(IN +  32)); \
+    X[3] = XOR(K[3], LOADU(IN +  48)); \
+    X[4] = XOR(K[4], LOADU(IN +  64)); \
+    X[5] = XOR(K[5], LOADU(IN +  80)); \
+    X[6] = XOR(K[6], LOADU(IN +  96)); \
+    X[7] = XOR(K[7], LOADU(IN + 112)); \
+    PERMUTE(X);                        \
+    S[0] = XOR(S[0], X[0]);            \
+    S[1] = XOR(S[1], X[1]);            \
+    S[2] = XOR(S[2], X[2]);            \
+    S[3] = XOR(S[3], X[3]);            \
+    S[4] = XOR(S[4], X[4]);            \
+    S[5] = XOR(S[5], X[5]);            \
+    S[6] = XOR(S[6], X[6]);            \
+    S[7] = XOR(S[7], X[7]);            \
 } while(0)
 
-#define ABSORB_LASTBLOCK(S, K, BLOCK_NR, IN, INLEN) \
-do                                                  \
-{                                                   \
-    ALIGN(64) unsigned char lastblock[BYTES(RATE)]; \
-    PAD(lastblock, sizeof lastblock, IN, INLEN);    \
-    ABSORB_BLOCK(S, K, BLOCK_NR, lastblock);        \
+#define ABSORB_LASTBLOCK(S, K, IN, INLEN)          \
+do                                                 \
+{                                                  \
+    ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)]; \
+    PAD(BLOCK, sizeof BLOCK, IN, INLEN);           \
+    ABSORB_BLOCK(S, K, BLOCK);                     \
 } while(0)
 
 #define ENCRYPT_BLOCK(K, BLOCK_NR, OUT, IN)                  \
@@ -263,27 +297,27 @@ do                                                           \
 #define ENCRYPT_LASTBLOCK(K, BLOCK_NR, OUT, IN, INLEN) \
 do                                                     \
 {                                                      \
-    ALIGN(64) unsigned char lastblock[BYTES(STORM_B)]; \
-    memset(lastblock, 0, BYTES(STORM_B));              \
-    memcpy(lastblock, IN, INLEN);                      \
-    ENCRYPT_BLOCK(K, BLOCK_NR, lastblock, lastblock);  \
-    memcpy(OUT, lastblock, INLEN);                     \
+    ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)];     \
+    memset(BLOCK, 0, BYTES(STORM_B));                  \
+    memcpy(BLOCK, IN, INLEN);                          \
+    ENCRYPT_BLOCK(K, BLOCK_NR, BLOCK, BLOCK);          \
+    memcpy(OUT, BLOCK, INLEN);                         \
 } while(0)
 
-#define ABSORB_DATA(S, K, IN, INLEN)                        \
-do                                                          \
-{                                                           \
-    if(INLEN > 0)                                           \
-    {                                                       \
-        size_t i = 0;                                       \
-        size_t l = INLEN;                                   \
-        while(l >= BYTES(RATE))                             \
-        {                                                   \
-            ABSORB_BLOCK(S, K, i, IN + i * BYTES(RATE));    \
-            i += 1; l -= BYTES(RATE);                       \
-        }                                                   \
-        ABSORB_LASTBLOCK(S, K, i, IN + i * BYTES(RATE), l); \
-    }                                                       \
+#define ABSORB_DATA(S, K, IN, INLEN)                            \
+do                                                              \
+{                                                               \
+    if(INLEN > 0)                                               \
+    {                                                           \
+        size_t i = 0;                                           \
+        size_t l = INLEN;                                       \
+        while(l >= BYTES(STORM_B))                              \
+        {                                                       \
+            ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));        \
+            i += 1; l -= BYTES(STORM_B);                        \
+        }                                                       \
+        ABSORB_LASTBLOCK(S, K, IN + i * BYTES(STORM_B), l);     \
+    }                                                           \
 } while(0)
 
 #define ENCRYPT_DATA(K, OUT, IN, INLEN)                                                \
@@ -318,10 +352,8 @@ do                                        \
 
 typedef enum tag__
 {
-    ABS_INIT_TAG     = 0x00,
-    ABS_HEADER_TAG   = 0x01,
-    ABS_MESSAGE_TAG  = 0x02,
-    ENC_TAG          = 0x13
+    ABS_TAG     = 0x00,
+    ENC_TAG     = 0x10
 } tag_t;
 
 static void* (* const volatile burn)(void*, int, size_t) = memset;
@@ -336,23 +368,21 @@ void storm_aead_encrypt(
 {
     __m128i S[8], K[8];
 
-    /* setup state */
-    LOAD_KEY(S, key, nonce, WORDS(STORM_N)/2, ABS_INIT_TAG);
-
-    /* absorb header */
-    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_HEADER_TAG);
+    /* absorb header and message */
+    LOAD_KEY(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* K_a */
+    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* phi**{i}(K_a) */
     ABSORB_DATA(S, K, h, hlen);
-
-    /* absorb message */
-    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_MESSAGE_TAG);
     ABSORB_DATA(S, K, m, mlen);
+
+    /* add length encoding */
+    S[7] = XOR(S[7], _mm_set_epi64x(mlen, hlen));
 
     /* extract tag */
     SQUEEZE_TAG(S, c + mlen);
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
-    LOAD_KEY(K, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG);
+    LOAD_KEY(K, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG); /* K_e */
     ENCRYPT_DATA(K, c, m, mlen);
 }
 
@@ -373,20 +403,18 @@ int storm_aead_decrypt(
         return result;
 
     /* decrypt message */
-    LOAD_KEY(K, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG);
+    LOAD_KEY(K, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG); /* K_e */
     DECRYPT_DATA(K, m, c, clen - BYTES(STORM_T));
     *mlen = clen - BYTES(STORM_T);
 
-    /* setup state */
-    LOAD_KEY(S, key, nonce, WORDS(STORM_N)/2, ABS_INIT_TAG);
-
-    /* absorb header */
-    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_HEADER_TAG);
+    /* absorb header and message */
+    LOAD_KEY(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* K_a */
+    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* phi**{i}(K_a) */
     ABSORB_DATA(S, K, h, hlen);
-
-    /* absorb message */
-    LOAD_KEY(K, key, nonce, WORDS(STORM_N)/2, ABS_MESSAGE_TAG);
     ABSORB_DATA(S, K, m, *mlen);
+
+    /* add length encoding */
+    S[7] = XOR(S[7], _mm_set_epi64x(*mlen, hlen));
 
     /* extract tag */
     SQUEEZE_TAG(S, tag);
