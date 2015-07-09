@@ -353,7 +353,7 @@ do                                        \
 typedef enum tag__
 {
     ABS_TAG     = 0x00,
-    ENC_TAG     = 0x10
+    ENC_TAG     = 0x01
 } tag_t;
 
 static void* (* const volatile burn)(void*, int, size_t) = memset;

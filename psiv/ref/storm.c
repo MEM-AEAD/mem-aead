@@ -117,7 +117,7 @@ static void print_bytes(const uint8_t * in, size_t inlen)
 typedef enum tag__
 {
     ABS_TAG     = 0x00,
-    ENC_TAG     = 0x10
+    ENC_TAG     = 0x01
 } tag_t;
 
 static STORM_INLINE void storm_permutation(storm_state_t state, size_t R)
