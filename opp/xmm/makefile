@@ -12,17 +12,7 @@ benchM4:
 	@./bench
 	@rm bench
 
-benchM256:
-	@$(CC) $(CFLAGS) -DM256 -o bench ../../utils/bench.c storm.c
-	@./bench
-	@rm bench
-
 check:
 	@$(CC) $(CFLAGS) -I. -o check ../../utils/check.c storm.c
 	@./check
 	@rm check
-
-genkat:
-	@$(CC) $(CFLAGS) -o genkat ../../utils/genkat.c storm.c
-	@./genkat > kat.h
-	@rm genkat

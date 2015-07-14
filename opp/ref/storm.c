@@ -140,7 +140,7 @@ static void print_bytes(const uint8_t * in, size_t inlen)
 }
 #endif
 
-static STORM_INLINE void storm_permutation(storm_state_t state, size_t R)
+static STORM_INLINE void storm_permute(storm_state_t state, size_t R)
 {
     storm_word_t * S = state->S;
     size_t i;
@@ -150,7 +150,7 @@ static STORM_INLINE void storm_permutation(storm_state_t state, size_t R)
     }
 }
 
-static STORM_INLINE void storm_inverse_permutation(storm_state_t state, size_t R)
+static STORM_INLINE void storm_permute_inverse(storm_state_t state, size_t R)
 {
     storm_word_t * S = state->S;
     size_t i;
@@ -202,7 +202,7 @@ static STORM_INLINE void storm_load_key(storm_state_t key, const unsigned char *
     S[15] = 0;
 
     /* apply permutation */
-    storm_permutation(key, STORM_R);
+    storm_permute(key, STORM_R);
 
 #if defined(STORM_DEBUG)
     printf("SETUP KEY:\n");
@@ -295,14 +295,13 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t x
     storm_update_key(x);
 
     /* load data and XOR key */
-    memset(block, 0, sizeof(storm_state_t));
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
         BLK[i] = LOAD(in + i * BYTES(STORM_W)) ^ X[i];
     }
 
     /* apply permutation */
-    storm_permutation(block, STORM_R);
+    storm_permute(block, STORM_R);
 
     /* absorb into state */
     for (i = 0; i < WORDS(STORM_B); ++i)
@@ -345,57 +344,17 @@ static STORM_INLINE void storm_encrypt_block(storm_state_t state, storm_state_t 
     }
 
     /* apply permutation */
-    storm_permutation(block, STORM_R);
+    storm_permute(block, STORM_R);
 
-    /* XOR message to state, XOR key to block, and extract ciphertext */
+    /* XOR key to block and store as ciphertext, XOR message to state */
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
-        BLK[i] ^= X[i];
-        STORE(out + i * BYTES(STORM_W), BLK[i]);
+        STORE(out + i * BYTES(STORM_W), BLK[i] ^ X[i]);
         S[i] ^= LOAD(in + i * BYTES(STORM_W));
     }
 
 #if defined(STORM_DEBUG)
     printf("ENCRYPTING BLOCK\n");
-    printf("IN:\n");
-    print_bytes(in, BYTES(STORM_B));
-    printf("OUT:\n");
-    print_bytes(out, BYTES(STORM_B));
-    printf("STATE:\n");
-    print_state(state);
-#endif
-}
-
-static STORM_INLINE void storm_decrypt_block(storm_state_t state, storm_state_t x, uint8_t * out, const uint8_t * in)
-{
-    size_t i;
-    storm_state_t block;
-    storm_word_t * BLK = block->S;
-    storm_word_t * S = state->S;
-    storm_word_t * X = x->S;
-
-    /* update key */
-    storm_update_key(x);
-
-    /* load ciphertext and XOR key */
-    for (i = 0; i < WORDS(STORM_B); ++i)
-    {
-        BLK[i] = LOAD(in + i * BYTES(STORM_W)) ^ X[i];
-    }
-
-    /* apply inverse permutation */
-    storm_inverse_permutation(block, STORM_R);
-
-    /* XOR ciphertext to state, XOR key to block, and extract message */
-    for (i = 0; i < WORDS(STORM_B); ++i)
-    {
-        BLK[i] ^= X[i];
-        STORE(out + i * BYTES(STORM_W), BLK[i]);
-        S[i] ^= BLK[i];
-    }
-
-#if defined(STORM_DEBUG)
-    printf("DECRYPTING BLOCK\n");
     printf("IN:\n");
     print_bytes(in, BYTES(STORM_B));
     printf("OUT:\n");
@@ -427,15 +386,14 @@ static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, storm_stat
         BLK[15] ^= inlen;
 
         /* apply permutation */
-        storm_permutation(block, STORM_R);
+        storm_permute(block, STORM_R);
 
         /* XOR padded message to state, XOR padded message and key to block, and extract ciphertext */
         storm_pad(lastblock, in, inlen);
         for (i = 0; i < WORDS(STORM_B); ++i)
         {
             S[i] ^= LOAD(lastblock + i * BYTES(STORM_W));
-            BLK[i] ^= LOAD(lastblock + i * BYTES(STORM_W)) ^ X[i];
-            STORE(lastblock + i * BYTES(STORM_W), BLK[i]);
+            STORE(lastblock + i * BYTES(STORM_W), BLK[i] ^ X[i] ^ LOAD(lastblock + i * BYTES(STORM_W)));
         }
         memcpy(out, lastblock, inlen);
         burn(lastblock, 0, BYTES(STORM_B));
@@ -451,6 +409,43 @@ static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, storm_stat
     }
 }
 
+static STORM_INLINE void storm_decrypt_block(storm_state_t state, storm_state_t x, uint8_t * out, const uint8_t * in)
+{
+    size_t i;
+    storm_state_t block;
+    storm_word_t * BLK = block->S;
+    storm_word_t * S = state->S;
+    storm_word_t * X = x->S;
+
+    /* update key */
+    storm_update_key(x);
+
+    /* load ciphertext and XOR key */
+    for (i = 0; i < WORDS(STORM_B); ++i)
+    {
+        BLK[i] = LOAD(in + i * BYTES(STORM_W)) ^ X[i];
+    }
+
+    /* apply inverse permutation */
+    storm_permute_inverse(block, STORM_R);
+
+    /* XOR ciphertext to state, XOR key to block, and extract message */
+    for (i = 0; i < WORDS(STORM_B); ++i)
+    {
+        STORE(out + i * BYTES(STORM_W), BLK[i] ^ X[i]);
+        S[i] ^= LOAD(out + i * BYTES(STORM_W));
+    }
+
+#if defined(STORM_DEBUG)
+    printf("DECRYPTING BLOCK\n");
+    printf("IN:\n");
+    print_bytes(in, BYTES(STORM_B));
+    printf("OUT:\n");
+    print_bytes(out, BYTES(STORM_B));
+    printf("STATE:\n");
+    print_state(state);
+#endif
+}
 
 static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, storm_state_t x, uint8_t * out, const uint8_t * in, size_t inlen)
 {
@@ -461,7 +456,6 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, storm_stat
         storm_word_t * BLK = block->S;
         storm_word_t * S = state->S;
         storm_word_t * X = x->S;
-        uint8_t buf[BYTES(STORM_B)];
         uint8_t lastblock[BYTES(STORM_B)];
 
         /* update key */
@@ -475,22 +469,20 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, storm_stat
         BLK[15] ^= inlen;
 
         /* apply permutation */
-        storm_permutation(block, STORM_R);
+        storm_permute(block, STORM_R);
 
         /* XOR padded ciphertext and key to block, store message */
         storm_pad(lastblock, in, inlen);
         for (i = 0; i < WORDS(STORM_B); ++i)
         {
-            BLK[i] ^= LOAD(lastblock + i * BYTES(STORM_W)) ^ X[i];
-            STORE(lastblock + i * BYTES(STORM_W), BLK[i]);
+            STORE(lastblock + i * BYTES(STORM_W), BLK[i] ^ X[i] ^ LOAD(lastblock + i * BYTES(STORM_W)));
         }
         memcpy(out, lastblock, inlen);
         /* XOR message to state */
-        storm_pad(buf, lastblock, inlen);
+        storm_pad(lastblock, out, inlen);
         for (i = 0; i < WORDS(STORM_B); ++i) {
-            S[i] ^= LOAD(buf + i * BYTES(STORM_W));
+            S[i] ^= LOAD(lastblock + i * BYTES(STORM_W));
         }
-        burn(buf, 0, BYTES(STORM_B));
         burn(lastblock, 0, BYTES(STORM_B));
 #if defined(STORM_DEBUG)
         printf("DECRYPTING LASTBLOCK\n");
@@ -555,7 +547,7 @@ void storm_squeeze_tag(storm_state_t state, unsigned char * tag)
     storm_word_t * S = state->S;
     uint8_t block[BYTES(STORM_B - STORM_K)];
 
-    storm_permutation(state, STORM_R);
+    storm_permute(state, STORM_R);
 
     /* squeeze tag (TODO: do it sponge-like) */
     for (i = 0; i < WORDS(STORM_B - STORM_K); ++i)
@@ -605,10 +597,10 @@ void storm_aead_encrypt(
 
     /* encrypt message */
     storm_encrypt_data(state, x, c, m, mlen);
+    *clen = mlen + BYTES(STORM_T);
 
     /* extract tag */
     storm_squeeze_tag(state, c + mlen);
-    *clen = mlen + BYTES(STORM_T);
 
     /* empty buffers */
     burn(state, 0, sizeof(storm_state_t));
