@@ -449,13 +449,8 @@ void storm_aead_encrypt(
     storm_state_t state, k;
 
     /* absorb header and message */
-#if defined(STORM_DEBUG)
-    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
-    storm_update_key(state);
-    print_state(state);
-#endif
-    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
-    memcpy(k, state, sizeof(storm_state_t)); /* phi**{i}(K_a) */
+    memset(state, 0, sizeof(storm_state_t));
+    storm_load_key(k, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
     storm_absorb_data(state, k, h, hlen);
     storm_absorb_data(state, k, m, mlen);
     storm_absorb_finalise(state, k, hlen, mlen);
@@ -494,8 +489,8 @@ int storm_aead_decrypt(
     *mlen = clen - BYTES(STORM_T);
 
     /* absorb header and message */
-    storm_load_key(state, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
-    memcpy(k, state, sizeof(storm_state_t)); /* phi**{i}(K_a) */
+    memset(state, 0, sizeof(storm_state_t));
+    storm_load_key(k, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
     storm_absorb_data(state, k, h, hlen);
     storm_absorb_data(state, k, m, *mlen);
     storm_absorb_finalise(state, k, hlen, *mlen);
