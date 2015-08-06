@@ -160,21 +160,15 @@ static STORM_INLINE void storm_pad(uint8_t * out, const uint8_t * in, const size
     out[BYTES(STORM_B) - 1] |= 0x80;
 }
 
-static STORM_INLINE void storm_init(storm_state_t key, const unsigned char * k, const unsigned char * iv, const size_t ivlen, tag_t tag)
+static STORM_INLINE void storm_init(storm_state_t key, const unsigned char * k, const unsigned char * n, tag_t tag)
 {
-    size_t i;
     storm_word_t * K = key->S;
 
-    K[ 0] = 0;
-    K[ 1] = 0;
+    /* load nonce */
+    K[ 0] = LOAD(n + 0 * BYTES(STORM_W));
+    K[ 1] = LOAD(n + 1 * BYTES(STORM_W));
     K[ 2] = 0;
     K[ 3] = 0;
-
-    /* load nonce/tag */
-    for(i = 0; i < ivlen; ++i)
-    {
-        K[i] = LOAD(iv + i * BYTES(STORM_W));
-    }
 
     /* load key */
     K[ 4] = LOAD(k + 0 * BYTES(STORM_W));
@@ -622,8 +616,8 @@ void storm_aead_encrypt(
     /* init states and keys */
     memset(sa, 0, sizeof(storm_state_t));
     memset(se, 0, sizeof(storm_state_t));
-    storm_init(ka, key, nonce, WORDS(STORM_N), ABS_TAG);
-    storm_init(ke, key, nonce, WORDS(STORM_N), ENC_TAG);
+    storm_init(ka, key, nonce, ABS_TAG);
+    storm_init(ke, key, nonce, ENC_TAG);
 
     /* absorb header */
     storm_absorb_data(sa, ka, h, hlen);
@@ -660,8 +654,8 @@ int storm_aead_decrypt(
     /* init states and keys */
     memset(sa, 0, sizeof(storm_state_t));
     memset(se, 0, sizeof(storm_state_t));
-    storm_init(ka, key, nonce, WORDS(STORM_N), ABS_TAG);
-    storm_init(ke, key, nonce, WORDS(STORM_N), ENC_TAG);
+    storm_init(ka, key, nonce, ABS_TAG);
+    storm_init(ke, key, nonce, ENC_TAG);
 
     /* absorb header */
     storm_absorb_data(sa, ka, h, hlen);

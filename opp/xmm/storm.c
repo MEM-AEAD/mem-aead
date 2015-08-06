@@ -234,23 +234,18 @@ do                                      \
     BLOCK[BLOCKLEN - 1] |= 0x80;        \
 } while(0)
 
-#define INIT(K, KEY, IV, IVLEN, TAG)               \
-do                                                 \
-{                                                  \
-    size_t i;                                      \
-    K[0] = _mm_set_epi64x(0,0);                    \
-    K[1] = _mm_set_epi64x(0,0);                    \
-    for (i = 0; i < IVLEN; ++i)                    \
-    {                                              \
-        K[i] = LOADU(IV + i * 2 * BYTES(STORM_W)); \
-    }                                              \
-    K[2] = LOADU(KEY +  0);                        \
-    K[3] = LOADU(KEY + 16);                        \
-    K[4] = _mm_set_epi64x(0,0);                    \
-    K[5] = _mm_set_epi64x(0,0);                    \
-    K[6] = _mm_set_epi64x(STORM_R, STORM_W);       \
-    K[7] = _mm_set_epi64x(TAG, STORM_T);           \
-    PERMUTE(K);                                    \
+#define INIT(K, KEY, NONCE, TAG)             \
+do                                           \
+{                                            \
+    K[0] = LOADU(NONCE + 0);                 \
+    K[1] = _mm_set_epi64x(0,0);              \
+    K[2] = LOADU(KEY +  0);                  \
+    K[3] = LOADU(KEY + 16);                  \
+    K[4] = _mm_set_epi64x(0,0);              \
+    K[5] = _mm_set_epi64x(0,0);              \
+    K[6] = _mm_set_epi64x(STORM_R, STORM_W); \
+    K[7] = _mm_set_epi64x(TAG, STORM_T);     \
+    PERMUTE(K);                              \
 } while(0)
 
 #if defined(M4)
@@ -295,16 +290,16 @@ do                                                             \
     T = K[1]; K[1] = K[3]; K[3] = K[5]; K[5] = K[7]; K[7] = T; \
 } while(0)
 
-#define ROTL512(K)  \
-do                  \
-{                   \
-    ROTL256(K);     \
-    ROTL256(K);     \
+#define ROTL512(K) \
+do                 \
+{                  \
+    ROTL256(K);    \
+    ROTL256(K);    \
 } while(0)
 
-#define ROTL768(K)  \
-do                  \
-{                   \
+#define ROTL768(K)                                             \
+do                                                             \
+{                                                              \
     __m128i T;                                                 \
     T = K[6]; K[6] = K[4]; K[4] = K[2]; K[2] = K[0]; K[0] = T; \
     T = K[7]; K[7] = K[5]; K[5] = K[3]; K[3] = K[1]; K[1] = T; \
@@ -578,8 +573,8 @@ void storm_aead_encrypt(
     /* init states and keys */
     memset(SA, 0,  8 * sizeof(__m128i));
     memset(SE, 0,  8 * sizeof(__m128i));
-    INIT(KA, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
-    INIT(KE, key, nonce, WORDS(STORM_N)/2, ENC_TAG);
+    INIT(KA, key, nonce, ABS_TAG);
+    INIT(KE, key, nonce, ENC_TAG);
 
     /* absorb header */
     ABSORB_DATA(SA, KA, h, hlen);
@@ -610,8 +605,8 @@ int storm_aead_decrypt(
     /* init states and keys */
     memset(SA, 0,  8 * sizeof(__m128i));
     memset(SE, 0,  8 * sizeof(__m128i));
-    INIT(KA, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
-    INIT(KE, key, nonce, WORDS(STORM_N)/2, ENC_TAG);
+    INIT(KA, key, nonce, ABS_TAG);
+    INIT(KE, key, nonce, ENC_TAG);
 
     /* absorb header */
     ABSORB_DATA(SA, KA, h, hlen);
