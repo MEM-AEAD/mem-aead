@@ -293,9 +293,12 @@ static STORM_INLINE void storm_rotl512(storm_state_t key)
 
 static STORM_INLINE void storm_rotl768(storm_state_t key)
 {
-    storm_rotl256(key);
-    storm_rotl256(key);
-    storm_rotl256(key);
+    storm_word_t t;
+    storm_word_t * K = key->S;
+    t = K[12]; K[12] = K[ 8]; K[ 8] = K[ 4]; K[ 4] = K[ 0]; K[ 0] = t;
+    t = K[13]; K[13] = K[ 9]; K[ 9] = K[ 5]; K[ 5] = K[ 1]; K[ 1] = t;
+    t = K[14]; K[14] = K[10]; K[10] = K[ 6]; K[ 6] = K[ 2]; K[ 2] = t;
+    t = K[15]; K[15] = K[11]; K[11] = K[ 7]; K[ 7] = K[ 3]; K[ 3] = t;
 }
 
 static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t k, const uint8_t * in)
