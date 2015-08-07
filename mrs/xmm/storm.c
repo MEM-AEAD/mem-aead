@@ -22,10 +22,11 @@
 #define STORM_N (STORM_W *  2)   /* nonce size */
 #define STORM_K (STORM_W *  4)   /* key size */
 #define STORM_B (STORM_W * 16)   /* permutation width */
-#define STORM_C (STORM_W *  6)   /* capacity */
+#define STORM_C (STORM_W *  4)   /* capacity */
 #define RATE (STORM_B - STORM_C) /* rate */
 
 #define BYTES(x) (((x) + 7) / 8)
+#define WORDS(x) (((x) + (STORM_W-1)) / STORM_W)
 
 #if defined(_MSC_VER)
     #define ALIGN(x) __declspec(align(x))
@@ -36,17 +37,6 @@
 #define XOR(A, B) _mm_xor_si128((A), (B))
 #define AND(A, B) _mm_and_si128((A), (B))
 #define ADD(A, B) _mm_add_epi64((A), (B))
-
-#define U0 0x901ABF1E4E0D2CA6ULL
-#define U1 0x2A501C50B300F172ULL
-#define U2 0x0F0D0CE7DD5462FBULL
-#define U3 0xF96D0588D0A6E052ULL
-#define U4 0x53DFA665CCEB91E9ULL
-#define U5 0xC0364181E8CB838FULL
-#define U6 0x7A91E62A3D2FD2C2ULL
-#define U7 0xDB55CC0737F96AB3ULL
-#define U8 0xD79CD8A45EA80C9CULL
-#define U9 0xB52B68E611239851ULL
 
 #define R0 32
 #define R1 24
@@ -77,364 +67,309 @@
 )
 #endif
 
-#define G(A0, A1, B0, B1, C0, C1, D0, D1)   \
-do                                          \
-{                                           \
-    A0 = ADD(A0, B0);    A1 = ADD(A1, B1);  \
-    D0 = XOR(D0, A0);    D1 = XOR(D1, A1);  \
-    D0 = ROT(D0, R0);    D1 = ROT(D1, R0);  \
-                                            \
-    C0 = ADD(C0, D0);    C1 = ADD(C1, D1);  \
-    B0 = XOR(B0, C0);    B1 = XOR(B1, C1);  \
-    B0 = ROT(B0, R1);    B1 = ROT(B1, R1);  \
-                                            \
-    A0 = ADD(A0, B0);    A1 = ADD(A1, B1);  \
-    D0 = XOR(D0, A0);    D1 = XOR(D1, A1);  \
-    D0 = ROT(D0, R2);    D1 = ROT(D1, R2);  \
-                                            \
-    C0 = ADD(C0, D0);    C1 = ADD(C1, D1);  \
-    B0 = XOR(B0, C0);    B1 = XOR(B1, C1);  \
-    B0 = ROT(B0, R3);    B1 = ROT(B1, R3);  \
+#define G(S)                                            \
+do                                                      \
+{                                                       \
+    S[0] = ADD(S[0], S[2]);    S[1] = ADD(S[1], S[3]);  \
+    S[6] = XOR(S[6], S[0]);    S[7] = XOR(S[7], S[1]);  \
+    S[6] = ROT(S[6],   R0);    S[7] = ROT(S[7],   R0);  \
+                                                        \
+    S[4] = ADD(S[4], S[6]);    S[5] = ADD(S[5], S[7]);  \
+    S[2] = XOR(S[2], S[4]);    S[3] = XOR(S[3], S[5]);  \
+    S[2] = ROT(S[2],   R1);    S[3] = ROT(S[3],   R1);  \
+                                                        \
+    S[0] = ADD(S[0], S[2]);    S[1] = ADD(S[1], S[3]);  \
+    S[6] = XOR(S[6], S[0]);    S[7] = XOR(S[7], S[1]);  \
+    S[6] = ROT(S[6],   R2);    S[7] = ROT(S[7],   R2);  \
+                                                        \
+    S[4] = ADD(S[4], S[6]);    S[5] = ADD(S[5], S[7]);  \
+    S[2] = XOR(S[2], S[4]);    S[3] = XOR(S[3], S[5]);  \
+    S[2] = ROT(S[2],   R3);    S[3] = ROT(S[3],   R3);  \
 } while(0)
 
 #if defined(__SSSE3__)
-#define DIAGONALIZE(A0, A1, B0, B1, C0, C1, D0, D1) \
-do                                                  \
-{                                                   \
-    __m128i t0, t1;                                 \
-                                                    \
-    t0 = _mm_alignr_epi8(B1, B0, 8);                \
-    t1 = _mm_alignr_epi8(B0, B1, 8);                \
-    B0 = t0;                                        \
-    B1 = t1;                                        \
-                                                    \
-    t0 = C0;                                        \
-    C0 = C1;                                        \
-    C1 = t0;                                        \
-                                                    \
-    t0 = _mm_alignr_epi8(D1, D0, 8);                \
-    t1 = _mm_alignr_epi8(D0, D1, 8);                \
-    D0 = t1;                                        \
-    D1 = t0;                                        \
+#define DIAGONALIZE(S)                     \
+do                                         \
+{                                          \
+    __m128i T[2];                          \
+                                           \
+    T[0] = _mm_alignr_epi8(S[3], S[2], 8); \
+    T[1] = _mm_alignr_epi8(S[2], S[3], 8); \
+    S[2] = T[0];                           \
+    S[3] = T[1];                           \
+                                           \
+    T[0] = S[4];                           \
+    S[4] = S[5];                           \
+    S[5] = T[0];                           \
+                                           \
+    T[0] = _mm_alignr_epi8(S[7], S[6], 8); \
+    T[1] = _mm_alignr_epi8(S[6], S[7], 8); \
+    S[6] = T[1];                           \
+    S[7] = T[0];                           \
 } while(0)
 
-#define UNDIAGONALIZE(A0, A1, B0, B1, C0, C1, D0, D1) \
-do                                                    \
-{                                                     \
-    __m128i t0, t1;                                   \
-                                                      \
-    t0 = _mm_alignr_epi8(B0, B1, 8);                  \
-    t1 = _mm_alignr_epi8(B1, B0, 8);                  \
-    B0 = t0;                                          \
-    B1 = t1;                                          \
-                                                      \
-    t0 = C0;                                          \
-    C0 = C1;                                          \
-    C1 = t0;                                          \
-                                                      \
-    t0 = _mm_alignr_epi8(D0, D1, 8);                  \
-    t1 = _mm_alignr_epi8(D1, D0, 8);                  \
-    D0 = t1;                                          \
-    D1 = t0;                                          \
+#define UNDIAGONALIZE(S)                   \
+do                                         \
+{                                          \
+    __m128i T[2];                          \
+                                           \
+    T[0] = _mm_alignr_epi8(S[2], S[3], 8); \
+    T[1] = _mm_alignr_epi8(S[3], S[2], 8); \
+    S[2] = T[0];                           \
+    S[3] = T[1];                           \
+                                           \
+    T[0] = S[4];                           \
+    S[4] = S[5];                           \
+    S[5] = T[0];                           \
+                                           \
+    T[0] = _mm_alignr_epi8(S[6], S[7], 8); \
+    T[1] = _mm_alignr_epi8(S[7], S[6], 8); \
+    S[6] = T[1];                           \
+    S[7] = T[0];                           \
 } while(0)
 
 #else
 
-#define DIAGONALIZE(A0, A1, B0, B1, C0, C1, D0, D1)          \
-do                                                           \
-{                                                            \
-    __m128i t0, t1;                                          \
-                                                             \
-    t0 = D0; t1 = B0;                                        \
-    D0 = C0; C0 = C1; C1 = D0;                               \
-    D0 = _mm_unpackhi_epi64(D1, _mm_unpacklo_epi64(t0, t0)); \
-    D1 = _mm_unpackhi_epi64(t0, _mm_unpacklo_epi64(D1, D1)); \
-    B0 = _mm_unpackhi_epi64(B0, _mm_unpacklo_epi64(B1, B1)); \
-    B1 = _mm_unpackhi_epi64(B1, _mm_unpacklo_epi64(t1, t1)); \
+#define DIAGONALIZE(S)                                               \
+do                                                                   \
+{                                                                    \
+    __m128i T[2];                                                    \
+                                                                     \
+    T[0] = S[6]; T[1] = S[2];                                        \
+    S[6] = S[4]; S[4] = S[5]; S[5] = S[6];                           \
+    S[6] = _mm_unpackhi_epi64(S[7], _mm_unpacklo_epi64(T[0], T[0])); \
+    S[7] = _mm_unpackhi_epi64(T[0], _mm_unpacklo_epi64(S[7], S[7])); \
+    S[2] = _mm_unpackhi_epi64(S[2], _mm_unpacklo_epi64(S[3], S[3])); \
+    S[3] = _mm_unpackhi_epi64(S[3], _mm_unpacklo_epi64(T[1], T[1])); \
 } while(0)
 
-#define UNDIAGONALIZE(A0, A1, B0, B1, C0, C1, D0, D1)        \
-do                                                           \
-{                                                            \
-    __m128i t0, t1;                                          \
-                                                             \
-    t0 = C0; C0 = C1; C1 = t0;                               \
-    t0 = B0; t1 = D0;                                        \
-    B0 = _mm_unpackhi_epi64(B1, _mm_unpacklo_epi64(B0, B0)); \
-    B1 = _mm_unpackhi_epi64(t0, _mm_unpacklo_epi64(B1, B1)); \
-    D0 = _mm_unpackhi_epi64(D0, _mm_unpacklo_epi64(D1, D1)); \
-    D1 = _mm_unpackhi_epi64(D1, _mm_unpacklo_epi64(t1, t1)); \
+#define UNDIAGONALIZE(S)                                             \
+do                                                                   \
+{                                                                    \
+    __m128i T[2];                                                    \
+                                                                     \
+    T[0] = S[4]; S[4] = S[5]; S[5] = T[0];                           \
+    T[0] = S[2]; T[1] = S[6];                                        \
+    S[2] = _mm_unpackhi_epi64(S[3], _mm_unpacklo_epi64(S[2], S[2])); \
+    S[3] = _mm_unpackhi_epi64(T[0], _mm_unpacklo_epi64(S[3], S[3])); \
+    S[6] = _mm_unpackhi_epi64(S[6], _mm_unpacklo_epi64(S[7], S[7])); \
+    S[7] = _mm_unpackhi_epi64(S[7], _mm_unpacklo_epi64(T[1], T[1])); \
 } while(0)
 
 #endif
 
-#define F(A0, A1, B0, B1, C0, C1, D0, D1)          \
+#define F(S)          \
+do                    \
+{                     \
+    G(S);             \
+    DIAGONALIZE(S);   \
+    G(S);             \
+    UNDIAGONALIZE(S); \
+} while(0)
+
+#define PERMUTE(S)               \
+do                               \
+{                                \
+    int r;                       \
+    for(r = 0; r < STORM_R; ++r) \
+    {                            \
+        F(S);                    \
+    }                            \
+} while(0)
+
+#define PAD(OUT, OUTLEN, IN, INLEN) \
+do                                  \
+{                                   \
+    memset(OUT, 0, OUTLEN);         \
+    memcpy(OUT, IN, INLEN);         \
+} while(0)
+
+/*
+old padding:
+OUT[INLEN] = 0x01;
+OUT[OUTLEN - 1] |= 0x80;
+*/
+
+#define ABSORB_BLOCK(S, IN)                                   \
+do                                                            \
+{                                                             \
+    size_t j;                                                 \
+    PERMUTE(S);                                               \
+    for (j = 0; j < WORDS(STORM_B)/2; ++j)                    \
+    {                                                         \
+        S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(STORM_W))); \
+    }                                                         \
+} while(0)
+
+#define ABSORB_LASTBLOCK(S, IN, INLEN)                 \
+do                                                     \
+{                                                      \
+    ALIGN(64) unsigned char lastblock[BYTES(STORM_B)]; \
+    PAD(lastblock, sizeof lastblock, IN, INLEN);       \
+    ABSORB_BLOCK(S, lastblock);                        \
+} while(0)
+
+#define ENCRYPT_BLOCK(S, OUT, IN)                             \
+do                                                            \
+{                                                             \
+    size_t j;                                                 \
+    PERMUTE(S);                                               \
+    for (j = 0; j < WORDS(RATE)/2; ++j)                       \
+    {                                                         \
+        S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(STORM_W))); \
+        STOREU(OUT + j * 2 * BYTES(STORM_W), S[j]);           \
+    }                                                         \
+} while(0)
+
+#define ENCRYPT_LASTBLOCK(S, OUT, IN, INLEN)        \
+do                                                  \
+{                                                   \
+    ALIGN(64) unsigned char lastblock[BYTES(RATE)]; \
+    PAD(lastblock, sizeof lastblock, IN, INLEN);    \
+    ENCRYPT_BLOCK(S, lastblock, lastblock);         \
+    memcpy(OUT, lastblock, INLEN);                  \
+} while(0)
+
+#define DECRYPT_BLOCK(S, OUT, IN)                           \
+do                                                          \
+{                                                           \
+    size_t j;                                               \
+    PERMUTE(S);                                             \
+    for (j = 0; j < WORDS(RATE)/2; ++j)                     \
+    {                                                       \
+        __m128i T = LOADU(IN + j * 2 * BYTES(STORM_W));     \
+        STOREU(OUT + j * 2 * BYTES(STORM_W), XOR(S[j], T)); \
+        S[j] = T;                                           \
+    }                                                       \
+} while(0)
+
+#define DECRYPT_LASTBLOCK(S, OUT, IN, INLEN)                      \
+do                                                                \
+{                                                                 \
+    size_t j;                                                     \
+    ALIGN(64) unsigned char lastblock[BYTES(RATE)];               \
+    PERMUTE(S);                                                   \
+    for (j = 0; j < WORDS(RATE)/2; ++j)                           \
+    {                                                             \
+        STOREU(lastblock + j * 2 * BYTES(STORM_W), S[j]);         \
+    }                                                             \
+    memcpy(lastblock, IN, INLEN);                                 \
+    for (j = 0; j < WORDS(RATE)/2; ++j)                           \
+    {                                                             \
+        __m128i T = LOADU(lastblock + j * 2 * BYTES(STORM_W));    \
+        STOREU(lastblock + j * 2 * BYTES(STORM_W), XOR(S[j], T)); \
+        S[j] = T;                                                 \
+    }                                                             \
+    memcpy(OUT, lastblock, INLEN);                                \
+} while(0)
+
+/*
+old padding:
+lastblock[INLEN] ^= 0x01;
+lastblock[BYTES(RATE)-1] ^= 0x80;
+*/
+
+#define INIT(S, KEY, IV, IVLEN, TAG)               \
 do                                                 \
 {                                                  \
-    G(A0, A1, B0, B1, C0, C1, D0, D1);             \
-    DIAGONALIZE(A0, A1, B0, B1, C0, C1, D0, D1);   \
-    G(A0, A1, B0, B1, C0, C1, D0, D1);             \
-    UNDIAGONALIZE(A0, A1, B0, B1, C0, C1, D0, D1); \
+    size_t j;                                      \
+    memset(S, 0,  8 * sizeof(__m128i));            \
+    for (j = 0; j < IVLEN; ++j)                    \
+    {                                              \
+        S[j] = LOADU(IV + j * 2 * BYTES(STORM_W)); \
+    }                                              \
+    S[4] = _mm_set_epi64x(STORM_R, STORM_W);       \
+    S[5] = _mm_set_epi64x(TAG, STORM_T);           \
+    S[6] = LOADU(KEY + 0 * 2 * BYTES(STORM_W));    \
+    S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));    \
 } while(0)
 
-#define PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1) \
-do                                              \
-{                                               \
-    int i;                                      \
-    for(i = 0; i < STORM_R; ++i)                \
-    {                                           \
-        F(A0, A1, B0, B1, C0, C1, D0, D1);      \
-    }                                           \
+#define ABSORB_DATA(S, IN, INLEN)                     \
+do                                                    \
+{                                                     \
+    if(INLEN > 0)                                     \
+    {                                                 \
+        size_t i = 0;                                 \
+        size_t l = INLEN;                             \
+        while(l >= BYTES(STORM_B))                    \
+        {                                             \
+            ABSORB_BLOCK(S, IN + i);                  \
+            i += BYTES(STORM_B); l -= BYTES(STORM_B); \
+        }                                             \
+        ABSORB_LASTBLOCK(S, IN + i, l);               \
+    }                                                 \
 } while(0)
 
-#define PAD(BLOCK, BLOCKLEN, IN, INLEN) \
-do                                      \
-{                                       \
-    memset(BLOCK, 0, BLOCKLEN);         \
-    block_copy(BLOCK, IN, INLEN);       \
-    BLOCK[INLEN] = 0x01;                \
-    BLOCK[BLOCKLEN - 1] |= 0x80;        \
+#define ENCRYPT_DATA(S, OUT, IN, INLEN)           \
+do                                                \
+{                                                 \
+    if(INLEN > 0)                                 \
+    {                                             \
+        size_t i = 0;                             \
+        size_t l = INLEN;                         \
+        while(l >= BYTES(RATE))                   \
+        {                                         \
+            ENCRYPT_BLOCK(S, OUT + i, IN + i);    \
+            i += BYTES(RATE); l -= BYTES(RATE);   \
+        }                                         \
+        ENCRYPT_LASTBLOCK(S, OUT + i, IN + i, l); \
+    }                                             \
 } while(0)
 
-#define INJECT_DOMAIN_CONSTANT(A0, A1, B0, B1, C0, C1, D0, D1, TAG)       \
-do                                                                        \
-{                                                                         \
-    D1 = XOR(D1, _mm_set_epi64x(TAG, 0));                                 \
+#define DECRYPT_DATA(S, OUT, IN, INLEN)           \
+do                                                \
+{                                                 \
+    if(INLEN > 0)                                 \
+    {                                             \
+        size_t i = 0;                             \
+        size_t l = INLEN;                         \
+        while(l >= BYTES(RATE))                   \
+        {                                         \
+            DECRYPT_BLOCK(S, OUT + i, IN + i);    \
+            i += BYTES(RATE), l -= BYTES(RATE);   \
+        }                                         \
+        DECRYPT_LASTBLOCK(S, OUT + i, IN + i, l); \
+    }                                             \
 } while(0)
 
-#define ABSORB_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, IN, TAG)    \
-do                                                               \
-{                                                                \
-    INJECT_DOMAIN_CONSTANT(A0, A1, B0, B1, C0, C1, D0, D1, TAG); \
-    PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1);                     \
-    A0 = XOR(A0, LOADU(IN +  0));                                \
-    A1 = XOR(A1, LOADU(IN + 16));                                \
-    B0 = XOR(B0, LOADU(IN + 32));                                \
-    B1 = XOR(B1, LOADU(IN + 48));                                \
-    C0 = XOR(C0, LOADU(IN + 64));                                \
+#define FINALISE(S, HLEN, MLEN, TAG)              \
+do                                                \
+{                                                 \
+    PERMUTE(S);                                   \
+    S[0] = XOR(S[0], _mm_set_epi64x(MLEN, HLEN)); \
+    PERMUTE(S);                                   \
+    STOREU(TAG,                    S[0]);         \
+    STOREU(TAG + BYTES(STORM_T)/2, S[1]);         \
 } while(0)
-
-#define ABSORB_LASTBLOCK(A0, A1, B0, B1, C0, C1, D0, D1, IN, INLEN, TAG)    \
-do                                                                          \
-{                                                                           \
-    ALIGN(64) unsigned char lastblock[BYTES(RATE)];                         \
-    PAD(lastblock, sizeof lastblock, IN, INLEN);                            \
-    ABSORB_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, lastblock, TAG);           \
-} while(0)
-
-#define ENCRYPT_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT, IN)         \
-do                                                                     \
-{                                                                      \
-    ABSORB_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, IN, ENC_PAYLOAD_TAG); \
-    STOREU(OUT +  0, A0);                                              \
-    STOREU(OUT + 16, A1);                                              \
-    STOREU(OUT + 32, B0);                                              \
-    STOREU(OUT + 48, B1);                                              \
-    STOREU(OUT + 64, C0);                                              \
-} while(0)
-
-#define ENCRYPT_LASTBLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT, IN, INLEN)   \
-do                                                                          \
-{                                                                           \
-    ALIGN(64) unsigned char lastblock[BYTES(RATE)];                         \
-    PAD(lastblock, sizeof lastblock, IN, INLEN);                            \
-    ENCRYPT_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, lastblock, lastblock);    \
-    block_copy(OUT, lastblock, INLEN);                                      \
-} while(0)
-
-#define DECRYPT_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT, IN)               \
-do                                                                           \
-{                                                                            \
-    __m128i W0, W1, W2, W3, W4;                                              \
-    INJECT_DOMAIN_CONSTANT(A0, A1, B0, B1, C0, C1, D0, D1, ENC_PAYLOAD_TAG); \
-    PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1);                                 \
-    W0 = LOADU(IN +  0); STOREU(OUT +  0, XOR(A0, W0)); A0 = W0;             \
-    W1 = LOADU(IN + 16); STOREU(OUT + 16, XOR(A1, W1)); A1 = W1;             \
-    W2 = LOADU(IN + 32); STOREU(OUT + 32, XOR(B0, W2)); B0 = W2;             \
-    W3 = LOADU(IN + 48); STOREU(OUT + 48, XOR(B1, W3)); B1 = W3;             \
-    W4 = LOADU(IN + 64); STOREU(OUT + 64, XOR(C0, W4)); C0 = W4;             \
-} while(0)
-
-#define DECRYPT_LASTBLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT, IN, INLEN)      \
-do                                                                             \
-{                                                                              \
-    ALIGN(64) unsigned char lastblock[BYTES(RATE)];                            \
-    __m128i W0, W1, W2, W3, W4;                                                \
-    INJECT_DOMAIN_CONSTANT(A0, A1, B0, B1, C0, C1, D0, D1, ENC_PAYLOAD_TAG);   \
-    PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1);                                   \
-    STOREU(lastblock +   0, A0);                                               \
-    STOREU(lastblock +  16, A1);                                               \
-    STOREU(lastblock +  32, B0);                                               \
-    STOREU(lastblock +  48, B1);                                               \
-    STOREU(lastblock +  64, C0);                                               \
-    block_copy(lastblock, IN, INLEN);                                          \
-    lastblock[INLEN] ^= 0x01;                                                  \
-    lastblock[BYTES(RATE)-1] ^= 0x80;                                          \
-    W0 = LOADU(lastblock +  0); STOREU(lastblock +  0, XOR(A0, W0)); A0 = W0;  \
-    W1 = LOADU(lastblock + 16); STOREU(lastblock + 16, XOR(A1, W1)); A1 = W1;  \
-    W2 = LOADU(lastblock + 32); STOREU(lastblock + 32, XOR(B0, W2)); B0 = W2;  \
-    W3 = LOADU(lastblock + 48); STOREU(lastblock + 48, XOR(B1, W3)); B1 = W3;  \
-    W4 = LOADU(lastblock + 64); STOREU(lastblock + 64, XOR(C0, W4)); C0 = W4;  \
-    block_copy(OUT, lastblock, INLEN);                                         \
-} while(0)
-
-#define INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, N, K0, K1, TAG)          \
-do                                                                          \
-{                                                                           \
-    A0 = _mm_set_epi64x(U1, U0);                                            \
-    A1 = K0;                                                                \
-    B0 = _mm_set_epi64x(U2, N[0]);                                          \
-    B1 = _mm_set_epi64x(N[1], U3);                                          \
-    C0 = K1;                                                                \
-    C1 = _mm_set_epi64x(U5, U4);                                            \
-    D0 = _mm_set_epi64x(U7, U6);                                            \
-    D1 = _mm_set_epi64x(U9, U8);                                            \
-    A0 = XOR(A0, _mm_set_epi64x(0, STORM_W));                               \
-    B0 = XOR(B0, _mm_set_epi64x(STORM_R, 0));                               \
-    C1 = XOR(C1, _mm_set_epi64x(0, STORM_T));                               \
-    D1 = XOR(D1, _mm_set_epi64x(TAG, 0));                                   \
-    PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1);                                \
-} while(0)
-
-#define ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, IN, INLEN, TAG)         \
-do                                                                          \
-{                                                                           \
-    if(INLEN > 0)                                                           \
-    {                                                                       \
-        size_t i = 0;                                                       \
-        size_t l = INLEN;                                                   \
-        while(l >= BYTES(RATE))                                             \
-        {                                                                   \
-            ABSORB_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, IN + i, TAG);      \
-            i += BYTES(RATE); l -= BYTES(RATE);                             \
-        }                                                                   \
-        ABSORB_LASTBLOCK(A0, A1, B0, B1, C0, C1, D0, D1, IN + i, l, TAG);   \
-    }                                                                       \
-} while(0)
-
-#define ENCRYPT_DATA(A0, A1, B0, B1, C0, C1, D0, D1, OUT, IN, INLEN)            \
-do                                                                              \
-{                                                                               \
-    if(INLEN > 0)                                                               \
-    {                                                                           \
-        size_t i = 0;                                                           \
-        size_t l = INLEN;                                                       \
-        while(l >= BYTES(RATE))                                                 \
-        {                                                                       \
-            ENCRYPT_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT + i, IN + i);     \
-            i += BYTES(RATE); l -= BYTES(RATE);                                 \
-        }                                                                       \
-        ENCRYPT_LASTBLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT + i, IN + i, l);  \
-    }                                                                           \
-} while(0)
-
-#define DECRYPT_DATA(A0, A1, B0, B1, C0, C1, D0, D1, OUT, IN, INLEN)            \
-do                                                                              \
-{                                                                               \
-    if(INLEN > 0)                                                               \
-    {                                                                           \
-        size_t i = 0;                                                           \
-        size_t l = INLEN;                                                       \
-        while(l >= BYTES(RATE))                                                 \
-        {                                                                       \
-            DECRYPT_BLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT + i, IN + i);     \
-            i += BYTES(RATE), l -= BYTES(RATE);                                 \
-        }                                                                       \
-        DECRYPT_LASTBLOCK(A0, A1, B0, B1, C0, C1, D0, D1, OUT + i, IN + i, l);  \
-    }                                                                           \
-} while(0)
-
-#define FINALISE(A0, A1, B0, B1, C0, C1, D0, D1)                            \
-do                                                                          \
-{                                                                           \
-    INJECT_DOMAIN_CONSTANT(A0, A1, B0, B1, C0, C1, D0, D1, ABS_FINAL_TAG);  \
-    PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1);                                \
-    PERMUTE(A0, A1, B0, B1, C0, C1, D0, D1);                                \
-} while(0)
-
-/* inlen <= 80 */
-static void block_copy(unsigned char *out, const unsigned char *in, const size_t inlen)
-{
-    size_t i = 0;
-    if( inlen & 64 )
-    {
-        STOREU(out + i +  0, LOADU(in + i +  0));
-        STOREU(out + i + 16, LOADU(in + i + 16));
-        STOREU(out + i + 32, LOADU(in + i + 32));
-        STOREU(out + i + 48, LOADU(in + i + 48));
-        i += 64;
-    }
-    if( inlen & 32 )
-    {
-        STOREU(out + i +  0, LOADU(in + i +  0));
-        STOREU(out + i + 16, LOADU(in + i + 16));
-        i += 32;
-    }
-    if( inlen & 16 )
-    {
-        STOREU(out + i +  0, LOADU(in + i +  0));
-        i += 16;
-    }
-    if( inlen & 8 )
-    {
-        memcpy(out + i, in + i, 8);
-        i += 8;
-    }
-    if( inlen & 4 )
-    {
-        memcpy(out + i, in + i, 4);
-        i += 4;
-    }
-    if( inlen & 2 )
-    {
-        memcpy(out + i, in + i, 2);
-        i += 2;
-    }
-    if( inlen & 1 )
-    {
-        memcpy(out + i, in + i, 1);
-        i += 1;
-    }
-}
 
 typedef enum tag__
 {
-    ABS_INIT_TAG     = 0x00,
-    ABS_HEADER_TAG   = 0x01,
-    ABS_PAYLOAD_TAG  = 0x02,
-    ABS_TRAILER_TAG  = 0x04,
-    ABS_FINAL_TAG    = 0x08,
-    ENC_INIT_TAG     = 0x10,
-    ENC_PAYLOAD_TAG  = 0x12
+    ABS_TAG = 0x00,
+    ENC_TAG = 0x01
 } tag_t;
+
+static void* (* const volatile burn)(void*, int, size_t) = memset;
 
 void storm_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
-    const unsigned char *p, size_t mlen,
+    const unsigned char *m, size_t mlen,
     const unsigned char *nonce,
     const unsigned char *key
     )
 {
-    __m128i A0, A1, B0, B1, C0, C1, D0, D1;
-    const __m128i N  = LOADU(nonce);
-    const __m128i K0 = LOADU(key +  0);
-    const __m128i K1 = LOADU(key + 16);
-
-    *clen = mlen + BYTES(STORM_T);
+    __m128i S[8];
 
     /* absorption phase */
-    INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, N, K0, K1, ABS_INIT_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, h, hlen, ABS_HEADER_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, p, mlen, ABS_PAYLOAD_TAG);
-    FINALISE(A0, A1, B0, B1, C0, C1, D0, D1);
-    STOREU(c + mlen +                0, A0);
-    STOREU(c + mlen + BYTES(STORM_T)/2, A1);
+    INIT(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    ABSORB_DATA(S, h, hlen);
+    ABSORB_DATA(S, m, mlen);
+    FINALISE(S, hlen, mlen, c + mlen);
+    *clen = mlen + BYTES(STORM_T);
 
     /* encryption phase */
-    INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, LOADU(c + mlen), K0, K1, ENC_INIT_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, c + mlen + BYTES(STORM_T)/2, BYTES(STORM_T)/2, ENC_INIT_TAG);
-    ENCRYPT_DATA(A0, A1, B0, B1, C0, C1, D0, D1, c, p, mlen);
+    INIT(S, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG);
+    ENCRYPT_DATA(S, c, m, mlen);
 }
 
 int storm_aead_decrypt(
@@ -445,28 +380,30 @@ int storm_aead_decrypt(
     const unsigned char *key
     )
 {
-    __m128i A0, A1, B0, B1, C0, C1, D0, D1;
-    const __m128i N  = LOADU(nonce);
-    const __m128i K0 = LOADU(key +  0);
-    const __m128i K1 = LOADU(key + 16);
+    int result = -1;
+    ALIGN(64) unsigned char tag[BYTES(STORM_T)];
+    __m128i S[8];
 
-    if (clen < BYTES(STORM_T))
-        return -1;
+    if (clen < BYTES(STORM_T)) { return -1; }
 
     /* decryption phase */
-    INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, LOADU(c + clen - BYTES(STORM_T)), K0, K1, ENC_INIT_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, c + clen - BYTES(STORM_T)/2, BYTES(STORM_T)/2, ENC_INIT_TAG);
-    DECRYPT_DATA(A0, A1, B0, B1, C0, C1, D0, D1, m, c, clen - BYTES(STORM_T));
+    INIT(S, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG);
+    DECRYPT_DATA(S, m, c, clen - BYTES(STORM_T));
     *mlen = clen - BYTES(STORM_T);
 
     /* absorption phase */
-    INITIALISE(A0, A1, B0, B1, C0, C1, D0, D1, N, K0, K1, ABS_INIT_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, h, hlen, ABS_HEADER_TAG);
-    ABSORB_DATA(A0, A1, B0, B1, C0, C1, D0, D1, m, *mlen, ABS_PAYLOAD_TAG);
-    FINALISE(A0, A1, B0, B1, C0, C1, D0, D1);
+    INIT(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    ABSORB_DATA(S, h, hlen);
+    ABSORB_DATA(S, m, *mlen);
+    FINALISE(S, hlen, *mlen, tag);
 
     /* verify tag */
-    A0 = _mm_cmpeq_epi8(A0, LOADU(c + clen - BYTES(STORM_T)  ));
-    A1 = _mm_cmpeq_epi8(A1, LOADU(c + clen - BYTES(STORM_T)/2));
-    return (((unsigned long)_mm_movemask_epi8(AND(A0, A1)) + 1) >> 16) - 1;
+    S[0] = _mm_cmpeq_epi8(LOADU(tag +                0), LOADU(c + clen - BYTES(STORM_T)  ));
+    S[1] = _mm_cmpeq_epi8(LOADU(tag + BYTES(STORM_T)/2), LOADU(c + clen - BYTES(STORM_T)/2));
+    result = (((unsigned long)_mm_movemask_epi8(AND(S[0], S[1])) + 1) >> 16) - 1;
+
+    /* burn decrypted plaintext on authentication failure */
+    if(result != 0) { burn(m, 0, *mlen); }
+
+    return result;
 }

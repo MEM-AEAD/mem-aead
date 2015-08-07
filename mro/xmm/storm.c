@@ -185,7 +185,7 @@ do                                      \
     BLOCK[BLOCKLEN - 1] |= 0x80;        \
 } while(0)
 
-#define INIT(K, KEY, IV, IVLEN, TAG)           \
+#define INIT(K, KEY, IV, IVLEN, TAG)               \
 do                                                 \
 {                                                  \
     size_t i;                                      \

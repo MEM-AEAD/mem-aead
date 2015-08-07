@@ -28,7 +28,7 @@
     #define STORM_N (STORM_W *  2)   /* nonce size */
     #define STORM_K (STORM_W *  4)   /* key size */
     #define STORM_B (STORM_W * 16)   /* permutation width */
-    #define STORM_C (STORM_W *  6)   /* capacity */
+    #define STORM_C (STORM_W *  4)   /* capacity */
     #define RATE (STORM_B - STORM_C) /* rate */
 
     /* Rotation constants (BLAKE2) */
@@ -102,8 +102,8 @@ static void print_bytes(const unsigned char * in, size_t inlen)
 
 typedef enum tag__
 {
-    ABS_TAG          = 0x00,
-    ENC_TAG          = 0x01
+    ABS_TAG = 0x00,
+    ENC_TAG = 0x01
 } tag_t;
 
 static STORM_INLINE void storm_permute(storm_state_t state)
@@ -116,12 +116,12 @@ static STORM_INLINE void storm_permute(storm_state_t state)
     }
 }
 
-static STORM_INLINE void storm_pad(unsigned char * out, const unsigned char * in, const size_t inlen, const size_t blocklen)
+static STORM_INLINE void storm_pad(unsigned char * out, const size_t outlen, const unsigned char * in, const size_t inlen)
 {
-    memset(out, 0, BYTES(blocklen));
+    memset(out, 0, outlen);
     memcpy(out, in, inlen);
-    out[inlen] = 0x01;
-    out[BYTES(blocklen) - 1] |= 0x80;
+    /*out[inlen] = 0x01;
+    out[outlen - 1] |= 0x80;*/
 }
 
 static STORM_INLINE void storm_absorb_block(storm_state_t state, const unsigned char * in)
@@ -145,7 +145,7 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, const unsigned 
 void storm_absorb_lastblock(storm_state_t state, const unsigned char * in, size_t inlen)
 {
     uint8_t lastblock[BYTES(STORM_B)];
-    storm_pad(lastblock, in, inlen, STORM_B);
+    storm_pad(lastblock, sizeof lastblock, in, inlen);
     storm_absorb_block(state, lastblock);
     burn(lastblock, 0, BYTES(STORM_B));
 }
@@ -172,7 +172,7 @@ static STORM_INLINE void storm_encrypt_block(storm_state_t state, unsigned char 
 static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, unsigned char * out, const unsigned char * in, size_t inlen)
 {
     uint8_t lastblock[BYTES(RATE)];
-    storm_pad(lastblock, in, inlen, RATE);
+    storm_pad(lastblock, sizeof lastblock, in, inlen);
     storm_encrypt_block(state, lastblock, lastblock);
     memcpy(out, lastblock, inlen);
     burn(lastblock, 0, BYTES(RATE));
@@ -180,8 +180,8 @@ static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, unsigned c
 
 static STORM_INLINE void storm_decrypt_block(storm_state_t state, unsigned char * out, const unsigned char * in)
 {
-    storm_word_t * S = state->S;
     size_t i;
+    storm_word_t * S = state->S;
     storm_permute(state);
     for (i = 0; i < WORDS(RATE); ++i)
     {
@@ -211,8 +211,8 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, unsigned c
 
     /* undo padding */
     memcpy(lastblock, in, inlen);
-    lastblock[inlen] ^= 0x01;
-    lastblock[BYTES(RATE) - 1] ^= 0x80;
+    /*lastblock[inlen] ^= 0x01;
+    lastblock[BYTES(RATE) - 1] ^= 0x80;*/
 
     for (i = 0; i < WORDS(RATE); ++i)
     {
@@ -237,22 +237,11 @@ void storm_init(storm_state_t state, const unsigned char * k, const unsigned cha
 {
     size_t i;
     storm_word_t * S = state->S;
-
-    S[ 0] = 0;
-    S[ 1] = 0;
-    S[ 2] = 0;
-    S[ 3] = 0;
-
+    memset(state, 0, sizeof(storm_state_t));
     for(i = 0; i < ivlen; ++i)
     {
         S[i] = LOAD(iv + i * BYTES(STORM_W));
     }
-
-    S[ 4] = 0;
-    S[ 5] = 0;
-    S[ 6] = 0;
-    S[ 7] = 0;
-
     S[ 8] = STORM_W;
     S[ 9] = STORM_R;
     S[10] = STORM_T;
@@ -364,8 +353,9 @@ void storm_aead_encrypt(
     const unsigned char *key
     )
 {
-    /* absorption phase */
     storm_state_t state;
+
+    /* absorption phase */
     storm_init(state, key, nonce, WORDS(STORM_N), ABS_TAG);
     storm_absorb_data(state, h, hlen);
     storm_absorb_data(state, m, mlen);
@@ -386,12 +376,11 @@ int storm_aead_decrypt(
     const unsigned char *key
     )
 {
+    int result = -1;
     unsigned char tag[BYTES(STORM_T)];
     storm_state_t state;
-    int result = -1;
 
-    if (clen < BYTES(STORM_T))
-        return -1;
+    if (clen < BYTES(STORM_T)) { return -1; }
 
     /* decryption phase */
     storm_init(state, key, c + clen - BYTES(STORM_T), WORDS(STORM_T), ENC_TAG); /* initialise with key and authentication tag */
@@ -408,10 +397,7 @@ int storm_aead_decrypt(
     result = storm_verify_tag(c + clen - BYTES(STORM_T), tag);
 
     /* burn decrypted plaintext on authentication failure */
-    if(result != 0)
-    {
-        burn(m, 0, *mlen);
-    }
+    if(result != 0) { burn(m, 0, *mlen); }
 
     burn(state, 0, sizeof(storm_state_t));
 
