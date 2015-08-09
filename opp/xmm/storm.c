@@ -270,7 +270,7 @@ do                                                                           \
 #define UPDATE(K)                                                                                       \
 do                                                                                                      \
 {                                                                                                       \
-    __m128i T = XOR(ROT(_mm_set_epi64x(0, K[0][0]), 9), _mm_srli_epi64(_mm_set_epi64x(0, K[4][1]), 7)); \
+    __m128i T = XOR(ROT(_mm_set_epi64x(0, K[0][0]), 11), _mm_slli_epi64(_mm_set_epi64x(0, K[2][1]), 13));\
     K[0] = _mm_set_epi64x(K[1][0], K[0][1]);                                                            \
     K[1] = _mm_set_epi64x(K[2][0], K[1][1]);                                                            \
     K[2] = _mm_set_epi64x(K[3][0], K[2][1]);                                                            \

@@ -78,7 +78,7 @@
 	STOREU256(&L[ 0], LOADU256(&L[ 4])); \
 	STOREU256(&L[ 4], LOADU256(&L[ 8])); \
 	STOREU256(&L[ 8], LOADU256(&L[12])); \
-	STOREU256(&L[ 0], t);                \
+	STOREU256(&L[12], t);                \
 } while(0)
 
 #define V1_MASK_ROT_768(L) do {        \

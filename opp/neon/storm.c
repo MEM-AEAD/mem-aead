@@ -204,7 +204,7 @@ do {                                                            \
 #define UPDATE(K)                                                                                                     \
 do                                                                                                                    \
 {                                                                                                                     \
-    uint64x2_t T = XOR(ROT(COMBU64( LOU64(K[0]), vcreate_u64(0)), 9), SHR(COMBU64( HIU64(K[4]), vcreate_u64(0)), 7)); \
+    uint64x2_t T = XOR(ROT(COMBU64( LOU64(K[0]), vcreate_u64(0)), 11), SHL(COMBU64( HIU64(K[2]), vcreate_u64(0)), 13)); \
     K[0] = COMBU64( HIU64(K[0]), LOU64(K[1]));                                                                        \
     K[1] = COMBU64( HIU64(K[1]), LOU64(K[2]));                                                                        \
     K[2] = COMBU64( HIU64(K[2]), LOU64(K[3]));                                                                        \

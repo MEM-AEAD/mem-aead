@@ -94,6 +94,7 @@ static void storm_hash_data(__m256i T[4], const uint8_t * h, size_t hlen, uint64
     V1_LOAD_BLOCK(B, lastblock);
     V1_BLOCKCIPHER_F(B, L);
     V1_ACCUMULATE(T, B);
+    V1_MASK_UPDATE(L);
     /* TODO: doublecheck that this is correct
              handling of the last block.
     */
@@ -272,6 +273,7 @@ void storm_aead_encrypt(
 
   *clen = mlen + BYTES(STORM_T);
   STOREU256(c + mlen, Te[0]);
+
 #if defined(DEBUG)
   {
     int i;

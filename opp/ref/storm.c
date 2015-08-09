@@ -260,7 +260,7 @@ static STORM_INLINE void storm_update(storm_state_t key)
 {
     size_t i;
     storm_word_t * K = key->S;
-    storm_word_t t = ROTR(K[0], 9) ^ (K[9] >> 7);
+    storm_word_t t = ROTL(K[0], 53) ^ (K[5] << 13);
     for (i = 0; i < WORDS(STORM_B) - 1; ++i)
     {
         K[i] = K[i+1];
