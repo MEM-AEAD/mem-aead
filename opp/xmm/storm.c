@@ -370,43 +370,40 @@ do                                     \
     UPDATE(K);                         \
 } while(0)
 
-#define ENCRYPT_LASTBLOCK(S, K, OUT, IN, INLEN)                       \
-do                                                                    \
-{                                                                     \
-    if (INLEN > 0)                                                    \
-    {                                                                 \
-        __m128i B[8];                                                 \
-        ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)];                \
-        ROTL768(K);                                                   \
-        B[0] = K[0];                                                  \
-        B[1] = K[1];                                                  \
-        B[2] = K[2];                                                  \
-        B[3] = K[3];                                                  \
-        B[4] = K[4];                                                  \
-        B[5] = K[5];                                                  \
-        B[6] = K[6];                                                  \
-        B[7] = XOR(K[7], _mm_set_epi64x(INLEN, 0));                   \
-        PERMUTE(B);                                                   \
-        PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
-        STORE(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
-        STORE(BLOCK +  16, XOR(B[1], XOR(K[1], LOADU(BLOCK +  16)))); \
-        STORE(BLOCK +  32, XOR(B[2], XOR(K[2], LOADU(BLOCK +  32)))); \
-        STORE(BLOCK +  48, XOR(B[3], XOR(K[3], LOADU(BLOCK +  48)))); \
-        STORE(BLOCK +  64, XOR(B[4], XOR(K[4], LOADU(BLOCK +  64)))); \
-        STORE(BLOCK +  80, XOR(B[5], XOR(K[5], LOADU(BLOCK +  80)))); \
-        STORE(BLOCK +  96, XOR(B[6], XOR(K[6], LOADU(BLOCK +  96)))); \
-        STORE(BLOCK + 112, XOR(B[7], XOR(K[7], LOADU(BLOCK + 112)))); \
-        memcpy(OUT, BLOCK, INLEN);                                    \
-        PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
-        S[0] = XOR(S[0], LOADU(BLOCK +   0));                         \
-        S[1] = XOR(S[1], LOADU(BLOCK +  16));                         \
-        S[2] = XOR(S[2], LOADU(BLOCK +  32));                         \
-        S[3] = XOR(S[3], LOADU(BLOCK +  48));                         \
-        S[4] = XOR(S[4], LOADU(BLOCK +  64));                         \
-        S[5] = XOR(S[5], LOADU(BLOCK +  80));                         \
-        S[6] = XOR(S[6], LOADU(BLOCK +  96));                         \
-        S[7] = XOR(S[7], LOADU(BLOCK + 112));                         \
-    }                                                                 \
+#define ENCRYPT_LASTBLOCK(S, K, OUT, IN, INLEN)                   \
+do                                                                \
+{                                                                 \
+    __m128i B[8];                                                 \
+    ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)];                \
+    ROTL768(K);                                                   \
+    B[0] = K[0];                                                  \
+    B[1] = K[1];                                                  \
+    B[2] = K[2];                                                  \
+    B[3] = K[3];                                                  \
+    B[4] = K[4];                                                  \
+    B[5] = K[5];                                                  \
+    B[6] = K[6];                                                  \
+    B[7] = XOR(K[7], _mm_set_epi64x(INLEN, 0));                   \
+    PERMUTE(B);                                                   \
+    PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
+    STORE(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
+    STORE(BLOCK +  16, XOR(B[1], XOR(K[1], LOADU(BLOCK +  16)))); \
+    STORE(BLOCK +  32, XOR(B[2], XOR(K[2], LOADU(BLOCK +  32)))); \
+    STORE(BLOCK +  48, XOR(B[3], XOR(K[3], LOADU(BLOCK +  48)))); \
+    STORE(BLOCK +  64, XOR(B[4], XOR(K[4], LOADU(BLOCK +  64)))); \
+    STORE(BLOCK +  80, XOR(B[5], XOR(K[5], LOADU(BLOCK +  80)))); \
+    STORE(BLOCK +  96, XOR(B[6], XOR(K[6], LOADU(BLOCK +  96)))); \
+    STORE(BLOCK + 112, XOR(B[7], XOR(K[7], LOADU(BLOCK + 112)))); \
+    memcpy(OUT, BLOCK, INLEN);                                    \
+    PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
+    S[0] = XOR(S[0], LOADU(BLOCK +   0));                         \
+    S[1] = XOR(S[1], LOADU(BLOCK +  16));                         \
+    S[2] = XOR(S[2], LOADU(BLOCK +  32));                         \
+    S[3] = XOR(S[3], LOADU(BLOCK +  48));                         \
+    S[4] = XOR(S[4], LOADU(BLOCK +  64));                         \
+    S[5] = XOR(S[5], LOADU(BLOCK +  80));                         \
+    S[6] = XOR(S[6], LOADU(BLOCK +  96));                         \
+    S[7] = XOR(S[7], LOADU(BLOCK + 112));                         \
 } while(0)
 
 #define DECRYPT_BLOCK(S, K, OUT, IN)    \
@@ -441,57 +438,54 @@ do                                      \
     UPDATE(K);                          \
 } while(0)
 
-#define DECRYPT_LASTBLOCK(S, K, OUT, IN, INLEN)                       \
-do                                                                    \
-{                                                                     \
-    if (INLEN > 0)                                                    \
-    {                                                                 \
-        __m128i B[8];                                                 \
-        ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)];                \
-        ROTL768(K);                                                   \
-        B[0] = K[0];                                                  \
-        B[1] = K[1];                                                  \
-        B[2] = K[2];                                                  \
-        B[3] = K[3];                                                  \
-        B[4] = K[4];                                                  \
-        B[5] = K[5];                                                  \
-        B[6] = K[6];                                                  \
-        B[7] = XOR(K[7], _mm_set_epi64x(INLEN, 0));                   \
-        PERMUTE(B);                                                   \
-        PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
-        STORE(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
-        STORE(BLOCK +  16, XOR(B[1], XOR(K[1], LOADU(BLOCK +  16)))); \
-        STORE(BLOCK +  32, XOR(B[2], XOR(K[2], LOADU(BLOCK +  32)))); \
-        STORE(BLOCK +  48, XOR(B[3], XOR(K[3], LOADU(BLOCK +  48)))); \
-        STORE(BLOCK +  64, XOR(B[4], XOR(K[4], LOADU(BLOCK +  64)))); \
-        STORE(BLOCK +  80, XOR(B[5], XOR(K[5], LOADU(BLOCK +  80)))); \
-        STORE(BLOCK +  96, XOR(B[6], XOR(K[6], LOADU(BLOCK +  96)))); \
-        STORE(BLOCK + 112, XOR(B[7], XOR(K[7], LOADU(BLOCK + 112)))); \
-        memcpy(OUT, BLOCK, INLEN);                                    \
-        PAD(BLOCK, sizeof BLOCK, OUT, INLEN);                         \
-        S[0] = XOR(S[0], LOADU(BLOCK +   0));                         \
-        S[1] = XOR(S[1], LOADU(BLOCK +  16));                         \
-        S[2] = XOR(S[2], LOADU(BLOCK +  32));                         \
-        S[3] = XOR(S[3], LOADU(BLOCK +  48));                         \
-        S[4] = XOR(S[4], LOADU(BLOCK +  64));                         \
-        S[5] = XOR(S[5], LOADU(BLOCK +  80));                         \
-        S[6] = XOR(S[6], LOADU(BLOCK +  96));                         \
-        S[7] = XOR(S[7], LOADU(BLOCK + 112));                         \
-    }                                                                 \
+#define DECRYPT_LASTBLOCK(S, K, OUT, IN, INLEN)                   \
+do                                                                \
+{                                                                 \
+    __m128i B[8];                                                 \
+    ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)];                \
+    ROTL768(K);                                                   \
+    B[0] = K[0];                                                  \
+    B[1] = K[1];                                                  \
+    B[2] = K[2];                                                  \
+    B[3] = K[3];                                                  \
+    B[4] = K[4];                                                  \
+    B[5] = K[5];                                                  \
+    B[6] = K[6];                                                  \
+    B[7] = XOR(K[7], _mm_set_epi64x(INLEN, 0));                   \
+    PERMUTE(B);                                                   \
+    PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
+    STORE(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
+    STORE(BLOCK +  16, XOR(B[1], XOR(K[1], LOADU(BLOCK +  16)))); \
+    STORE(BLOCK +  32, XOR(B[2], XOR(K[2], LOADU(BLOCK +  32)))); \
+    STORE(BLOCK +  48, XOR(B[3], XOR(K[3], LOADU(BLOCK +  48)))); \
+    STORE(BLOCK +  64, XOR(B[4], XOR(K[4], LOADU(BLOCK +  64)))); \
+    STORE(BLOCK +  80, XOR(B[5], XOR(K[5], LOADU(BLOCK +  80)))); \
+    STORE(BLOCK +  96, XOR(B[6], XOR(K[6], LOADU(BLOCK +  96)))); \
+    STORE(BLOCK + 112, XOR(B[7], XOR(K[7], LOADU(BLOCK + 112)))); \
+    memcpy(OUT, BLOCK, INLEN);                                    \
+    PAD(BLOCK, sizeof BLOCK, OUT, INLEN);                         \
+    S[0] = XOR(S[0], LOADU(BLOCK +   0));                         \
+    S[1] = XOR(S[1], LOADU(BLOCK +  16));                         \
+    S[2] = XOR(S[2], LOADU(BLOCK +  32));                         \
+    S[3] = XOR(S[3], LOADU(BLOCK +  48));                         \
+    S[4] = XOR(S[4], LOADU(BLOCK +  64));                         \
+    S[5] = XOR(S[5], LOADU(BLOCK +  80));                         \
+    S[6] = XOR(S[6], LOADU(BLOCK +  96));                         \
+    S[7] = XOR(S[7], LOADU(BLOCK + 112));                         \
 } while(0)
 
 #define ABSORB_DATA(S, K, IN, INLEN)                        \
 do                                                          \
 {                                                           \
-    if(INLEN > 0)                                           \
+    size_t i = 0;                                           \
+    size_t l = INLEN;                                       \
+    while(l >= BYTES(STORM_B))                              \
     {                                                       \
-        size_t i = 0;                                       \
-        size_t l = INLEN;                                   \
-        while(l >= BYTES(STORM_B))                          \
-        {                                                   \
-            ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                    \
-        }                                                   \
+        ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                        \
+    }                                                       \
+    if(l > 0)                                               \
+    {                                                       \
         ABSORB_LASTBLOCK(S, K, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
@@ -499,15 +493,15 @@ do                                                          \
 #define ENCRYPT_DATA(S, K, OUT, IN, INLEN)                                             \
 do                                                                                     \
 {                                                                                      \
-    if(INLEN > 0)                                                                      \
+    size_t i = 0;                                                                      \
+    size_t l = INLEN;                                                                  \
+    while(l >= BYTES(STORM_B))                                                         \
     {                                                                                  \
-        size_t i = 0;                                                                  \
-        size_t l = INLEN;                                                              \
-        while(l >= BYTES(STORM_B))                                                     \
-        {                                                                              \
-            ENCRYPT_BLOCK(S, K, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                                               \
-        }                                                                              \
+        ENCRYPT_BLOCK(S, K, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                                                   \
+    }                                                                                  \
+    if(l > 0)                                                                          \
+    {                                                                                  \
         ENCRYPT_LASTBLOCK(S, K, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
@@ -515,15 +509,15 @@ do                                                                              
 #define DECRYPT_DATA(S, K, OUT, IN, INLEN)                                             \
 do                                                                                     \
 {                                                                                      \
-    if(INLEN > 0)                                                                      \
+    size_t i = 0;                                                                      \
+    size_t l = INLEN;                                                                  \
+    while(l >= BYTES(STORM_B))                                                         \
     {                                                                                  \
-        size_t i = 0;                                                                  \
-        size_t l = INLEN;                                                              \
-        while(l >= BYTES(STORM_B))                                                     \
-        {                                                                              \
-            DECRYPT_BLOCK(S, K, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                                               \
-        }                                                                              \
+        DECRYPT_BLOCK(S, K, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                                                   \
+    }                                                                                  \
+    if(l > 0)                                                                          \
+    {                                                                                  \
         DECRYPT_LASTBLOCK(S, K, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
