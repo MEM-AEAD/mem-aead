@@ -201,10 +201,10 @@ static STORM_INLINE void storm_init(storm_state_t key, const unsigned char * k, 
 static STORM_INLINE void storm_update(storm_state_t key)
 {
     storm_word_t * K = key->S;
-    storm_word_t t0 = ROTR(K[0], 9) ^ (K[ 9] >> 7);
-    storm_word_t t1 = ROTR(K[1], 9) ^ (K[10] >> 7);
-    storm_word_t t2 = ROTR(K[2], 9) ^ (K[11] >> 7);
-    storm_word_t t3 = ROTR(K[3], 9) ^ (K[12] >> 7);
+    storm_word_t t0 = ROTL(K[0], 53) ^ (K[ 5] << 13);
+    storm_word_t t1 = ROTL(K[1], 53) ^ (K[ 6] << 13);
+    storm_word_t t2 = ROTL(K[2], 53) ^ (K[ 7] << 13);
+    storm_word_t t3 = ROTL(K[3], 53) ^ (K[ 8] << 13);
 
     K[ 0] = K[ 4];
     K[ 1] = K[ 5];
