@@ -129,22 +129,23 @@ void frequency()
 
 void bench()
 {
+#define BENCH_SIZE     4096
 #define BENCH_TRIALS     32
 #define BENCH_MAXLEN   1536
-  static unsigned char  in[4096];
-  static unsigned char out[4096+32];
-  static unsigned char  ad[4096];
+  static unsigned char  in[BENCH_SIZE];
+  static unsigned char out[BENCH_SIZE+32];
+  static unsigned char  ad[BENCH_SIZE];
   static unsigned char   n[32];
   static unsigned char   k[32];
   static size_t outlen;
   static size_t adlen = 0;
-  static unsigned long long median[4096 + 1];
+  static unsigned long long median[BENCH_SIZE + 1];
   int i, j;
 
   printf( "#bytes  median  per byte\n" );
 
   /* 1 ... BENCH_MAXLEN */
-  for( j = 0; j <= 4096; ++j )
+  for( j = 0; j <= BENCH_SIZE; ++j )
   {
     uint64_t cycles[BENCH_TRIALS + 1];
 
@@ -161,12 +162,12 @@ void bench()
     median[j] = cycles[BENCH_TRIALS / 2];
   }
 
-  for( j = 0; j <= BENCH_MAXLEN; j += 8 )
+  for( j = 0; j <= BENCH_SIZE; j += 8 )
     printf( "%5d, %7.2f\n", j, ( double )median[j] / j );
 
-  printf( "#2048   %6llu   %7.2f\n", median[2048], ( double )median[2048] / 2048.0 );
-  printf( "#4096   %6llu   %7.2f\n", median[4096], ( double )median[4096] / 4096.0 );
-  printf( "#long     long   %7.2f\n", ( double )( median[4096] - median[2048] ) / 2048.0 );
+  printf( "#%u   %6llu   %7.2f\n", BENCH_SIZE / 2, median[BENCH_SIZE/2], ( double )median[BENCH_SIZE/2] / (BENCH_SIZE / 2) );
+  printf( "#%u   %6llu   %7.2f\n", BENCH_SIZE, median[BENCH_SIZE], ( double )median[BENCH_SIZE] / BENCH_SIZE );
+  printf( "#long     long   %7.2f\n", ( double )( median[BENCH_SIZE] - median[BENCH_SIZE/2] ) / (BENCH_SIZE / 2.0) );
 }
 
 int main(int argc, char **argv)
