@@ -242,25 +242,25 @@ do                                                                              
 #define ABSORB_BLOCK(S, K, IN)         \
 do                                     \
 {                                      \
-    __m128i X[8];                      \
-    X[0] = XOR(K[0], LOADU(IN +   0)); \
-    X[1] = XOR(K[1], LOADU(IN +  16)); \
-    X[2] = XOR(K[2], LOADU(IN +  32)); \
-    X[3] = XOR(K[3], LOADU(IN +  48)); \
-    X[4] = XOR(K[4], LOADU(IN +  64)); \
-    X[5] = XOR(K[5], LOADU(IN +  80)); \
-    X[6] = XOR(K[6], LOADU(IN +  96)); \
-    X[7] = XOR(K[7], LOADU(IN + 112)); \
-    PERMUTE(X);                        \
-    S[0] = XOR(S[0], XOR(K[0], X[0]));  \
-    S[1] = XOR(S[1], XOR(K[1], X[1]));  \
-    S[2] = XOR(S[2], XOR(K[2], X[2]));  \
-    S[3] = XOR(S[3], XOR(K[3], X[3]));  \
-    S[4] = XOR(S[4], XOR(K[4], X[4]));  \
-    S[5] = XOR(S[5], XOR(K[5], X[5]));  \
-    S[6] = XOR(S[6], XOR(K[6], X[6]));  \
-    S[7] = XOR(S[7], XOR(K[7], X[7]));  \
-    UPDATE(K);                          \
+    __m128i B[8];                      \
+    B[0] = XOR(K[0], LOADU(IN +   0)); \
+    B[1] = XOR(K[1], LOADU(IN +  16)); \
+    B[2] = XOR(K[2], LOADU(IN +  32)); \
+    B[3] = XOR(K[3], LOADU(IN +  48)); \
+    B[4] = XOR(K[4], LOADU(IN +  64)); \
+    B[5] = XOR(K[5], LOADU(IN +  80)); \
+    B[6] = XOR(K[6], LOADU(IN +  96)); \
+    B[7] = XOR(K[7], LOADU(IN + 112)); \
+    PERMUTE(B);                        \
+    S[0] = XOR(S[0], XOR(K[0], B[0])); \
+    S[1] = XOR(S[1], XOR(K[1], B[1])); \
+    S[2] = XOR(S[2], XOR(K[2], B[2])); \
+    S[3] = XOR(S[3], XOR(K[3], B[3])); \
+    S[4] = XOR(S[4], XOR(K[4], B[4])); \
+    S[5] = XOR(S[5], XOR(K[5], B[5])); \
+    S[6] = XOR(S[6], XOR(K[6], B[6])); \
+    S[7] = XOR(S[7], XOR(K[7], B[7])); \
+    UPDATE(K);                         \
 } while(0)
 
 #define ABSORB_LASTBLOCK(S, K, IN, INLEN)          \
@@ -274,48 +274,48 @@ do                                                 \
 #define ABSORB_FINALISE(S, K, HLEN, MLEN)           \
 do                                                  \
 {                                                   \
-    __m128i X[8];                                   \
-    X[0] = K[0];                                    \
-    X[1] = K[1];                                    \
-    X[2] = K[2];                                    \
-    X[3] = K[3];                                    \
-    X[4] = K[4];                                    \
-    X[5] = K[5];                                    \
-    X[6] = K[6];                                    \
-    X[7] = XOR(K[7], _mm_set_epi64x(MLEN, HLEN));   \
-    PERMUTE(X);                                     \
-    S[0] = XOR(S[0], XOR(K[0], X[0]));              \
-    S[1] = XOR(S[1], XOR(K[1], X[1]));              \
-    S[2] = XOR(S[2], XOR(K[2], X[2]));              \
-    S[3] = XOR(S[3], XOR(K[3], X[3]));              \
-    S[4] = XOR(S[4], XOR(K[4], X[4]));              \
-    S[5] = XOR(S[5], XOR(K[5], X[5]));              \
-    S[6] = XOR(S[6], XOR(K[6], X[6]));              \
-    S[7] = XOR(S[7], XOR(K[7], X[7]));              \
+    __m128i B[8];                                   \
+    B[0] = K[0];                                    \
+    B[1] = K[1];                                    \
+    B[2] = K[2];                                    \
+    B[3] = K[3];                                    \
+    B[4] = K[4];                                    \
+    B[5] = K[5];                                    \
+    B[6] = K[6];                                    \
+    B[7] = XOR(K[7], _mm_set_epi64x(MLEN, HLEN));   \
+    PERMUTE(B);                                     \
+    S[0] = XOR(S[0], XOR(K[0], B[0]));              \
+    S[1] = XOR(S[1], XOR(K[1], B[1]));              \
+    S[2] = XOR(S[2], XOR(K[2], B[2]));              \
+    S[3] = XOR(S[3], XOR(K[3], B[3]));              \
+    S[4] = XOR(S[4], XOR(K[4], B[4]));              \
+    S[5] = XOR(S[5], XOR(K[5], B[5]));              \
+    S[6] = XOR(S[6], XOR(K[6], B[6]));              \
+    S[7] = XOR(S[7], XOR(K[7], B[7]));              \
     UPDATE(K);                                      \
-} while(0);
+} while(0)
 
 #define ENCRYPT_BLOCK(K, BLOCK_NR, OUT, IN)                  \
 do                                                           \
 {                                                            \
-    __m128i X[8];                                            \
-    X[0] = K[0];                                             \
-    X[1] = K[1];                                             \
-    X[2] = K[2];                                             \
-    X[3] = K[3];                                             \
-    X[4] = K[4];                                             \
-    X[5] = K[5];                                             \
-    X[6] = K[6];                                             \
-    X[7] = XOR(K[7], _mm_set_epi64x(BLOCK_NR, 0));           \
-    PERMUTE(X);                                              \
-    STORE(OUT +   0, XOR(X[0], XOR(K[0], LOADU(IN +   0)))); \
-    STORE(OUT +  16, XOR(X[1], XOR(K[1], LOADU(IN +  16)))); \
-    STORE(OUT +  32, XOR(X[2], XOR(K[2], LOADU(IN +  32)))); \
-    STORE(OUT +  48, XOR(X[3], XOR(K[3], LOADU(IN +  48)))); \
-    STORE(OUT +  64, XOR(X[4], XOR(K[4], LOADU(IN +  64)))); \
-    STORE(OUT +  80, XOR(X[5], XOR(K[5], LOADU(IN +  80)))); \
-    STORE(OUT +  96, XOR(X[6], XOR(K[6], LOADU(IN +  96)))); \
-    STORE(OUT + 112, XOR(X[7], XOR(K[7], LOADU(IN + 112)))); \
+    __m128i B[8];                                            \
+    B[0] = K[0];                                             \
+    B[1] = K[1];                                             \
+    B[2] = K[2];                                             \
+    B[3] = K[3];                                             \
+    B[4] = K[4];                                             \
+    B[5] = K[5];                                             \
+    B[6] = K[6];                                             \
+    B[7] = XOR(K[7], _mm_set_epi64x(BLOCK_NR, 0));           \
+    PERMUTE(B);                                              \
+    STORE(OUT +   0, XOR(B[0], XOR(K[0], LOADU(IN +   0)))); \
+    STORE(OUT +  16, XOR(B[1], XOR(K[1], LOADU(IN +  16)))); \
+    STORE(OUT +  32, XOR(B[2], XOR(K[2], LOADU(IN +  32)))); \
+    STORE(OUT +  48, XOR(B[3], XOR(K[3], LOADU(IN +  48)))); \
+    STORE(OUT +  64, XOR(B[4], XOR(K[4], LOADU(IN +  64)))); \
+    STORE(OUT +  80, XOR(B[5], XOR(K[5], LOADU(IN +  80)))); \
+    STORE(OUT +  96, XOR(B[6], XOR(K[6], LOADU(IN +  96)))); \
+    STORE(OUT + 112, XOR(B[7], XOR(K[7], LOADU(IN + 112)))); \
 } while(0)
 
 #define ENCRYPT_LASTBLOCK(K, BLOCK_NR, OUT, IN, INLEN) \
@@ -366,13 +366,6 @@ do                                      \
     ENCRYPT_DATA(K, OUT, IN, INLEN);    \
 } while(0)
 
-#define OUTPUT_TAG(S, TAG)                \
-do                                        \
-{                                         \
-    STOREU(TAG, S[0]);                    \
-    STOREU(TAG + BYTES(STORM_T)/2, S[1]); \
-} while(0)
-
 typedef enum tag__
 {
     ABS_TAG     = 0x00,
@@ -399,7 +392,8 @@ void storm_aead_encrypt(
     ABSORB_FINALISE(S, K, hlen, mlen);
 
     /* extract tag */
-    OUTPUT_TAG(S, c + mlen);
+    STOREU(c + mlen, S[0]);
+    STOREU(c + mlen + BYTES(STORM_T)/2, S[1]);
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
@@ -417,11 +411,10 @@ int storm_aead_decrypt(
     )
 {
     int result = -1;
-    ALIGN(64) unsigned char tag[BYTES(STORM_T)];
     __m128i S[8], K[8];
+    __m128i T[2];
 
-    if (clen < BYTES(STORM_T))
-        return result;
+    if (clen < BYTES(STORM_T)) { return result; }
 
     /* decrypt message */
     INIT(K, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG); /* K_e */
@@ -435,18 +428,13 @@ int storm_aead_decrypt(
     ABSORB_DATA(S, K, m, *mlen);
     ABSORB_FINALISE(S, K, hlen, *mlen);
 
-    /* extract tag */
-    OUTPUT_TAG(S, tag);
-
     /* verify tag */
-    S[0] = _mm_cmpeq_epi8(LOADU(tag +                0), LOADU(c + clen - BYTES(STORM_T)  ));
-    S[1] = _mm_cmpeq_epi8(LOADU(tag + BYTES(STORM_T)/2), LOADU(c + clen - BYTES(STORM_T)/2));
-    result = (((unsigned long)_mm_movemask_epi8(AND(S[0], S[1])) + 1) >> 16) - 1;
+    T[0] = _mm_cmpeq_epi8(S[0], LOADU(c + clen - BYTES(STORM_T)  ));
+    T[1] = _mm_cmpeq_epi8(S[1], LOADU(c + clen - BYTES(STORM_T)/2));
+    result = (((unsigned long)_mm_movemask_epi8(AND(T[0], T[1])) + 1) >> 16) - 1;
 
     /* burn decrypted plaintext on authentication failure */
-    if(result != 0) {
-        burn(m, 0, *mlen);
-    }
+    if (result != 0) { burn(m, 0, *mlen); }
 
     return result;
 }
