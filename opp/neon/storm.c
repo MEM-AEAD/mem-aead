@@ -320,7 +320,7 @@ do                                                                 \
     B[4] = K[4];                                                   \
     B[5] = K[5];                                                   \
     B[6] = K[6];                                                   \
-    B[7] = XOR(K[7], COMBU64(vcreate_u64(0), vcreate_u64(INLEN))); \
+    B[7] = K[7];                                                   \
     PERMUTE(B);                                                    \
     PAD(BLOCK, sizeof BLOCK, IN, INLEN);                           \
     STOREU(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
@@ -390,7 +390,7 @@ do                                                                 \
     B[4] = K[4];                                                   \
     B[5] = K[5];                                                   \
     B[6] = K[6];                                                   \
-    B[7] = XOR(K[7], COMBU64(vcreate_u64(0), vcreate_u64(INLEN))); \
+    B[7] = K[7];                                                   \
     PERMUTE(B);                                                    \
     PAD(BLOCK, sizeof BLOCK, IN, INLEN);                           \
     STOREU(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \

@@ -394,7 +394,6 @@ static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, storm_stat
     {
         B[i] = K[i];
     }
-    B[15] ^= inlen;
 
     /* apply permutation */
     storm_permute(block, STORM_R);
@@ -474,7 +473,6 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, storm_stat
     {
         B[i] = K[i];
     }
-    B[15] ^= inlen;
 
     /* apply permutation */
     storm_permute(block, STORM_R);

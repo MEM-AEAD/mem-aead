@@ -383,7 +383,7 @@ do                                                                \
     B[4] = K[4];                                                  \
     B[5] = K[5];                                                  \
     B[6] = K[6];                                                  \
-    B[7] = XOR(K[7], _mm_set_epi64x(INLEN, 0));                   \
+    B[7] = K[7];                                                  \
     PERMUTE(B);                                                   \
     PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
     STORE(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
@@ -451,7 +451,7 @@ do                                                                \
     B[4] = K[4];                                                  \
     B[5] = K[5];                                                  \
     B[6] = K[6];                                                  \
-    B[7] = XOR(K[7], _mm_set_epi64x(INLEN, 0));                   \
+    B[7] = K[7];                                                  \
     PERMUTE(B);                                                   \
     PAD(BLOCK, sizeof BLOCK, IN, INLEN);                          \
     STORE(BLOCK +   0, XOR(B[0], XOR(K[0], LOADU(BLOCK +   0)))); \
