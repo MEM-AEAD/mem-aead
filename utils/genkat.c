@@ -30,14 +30,15 @@ int storm_aead_decrypt(
 
 static void genkat(void)
 {
-	unsigned char w[256];
-	unsigned char h[256];
+#define MAX_SIZE 256
+	unsigned char w[MAX_SIZE];
+	unsigned char h[MAX_SIZE];
 	unsigned char k[32];
 	unsigned char n[16];
 
 	unsigned int i, j;
 
-	for(i = 0; i < sizeof w; ++i)
+	for(i = 0; i < MAX_SIZE; ++i)
 		w[i] = 255 & (i*197 + 123);
 
 	for(i = 0; i < sizeof h; ++i)
@@ -52,10 +53,10 @@ static void genkat(void)
 	printf("#ifndef STORM_KAT_H\n");
 	printf("#define STORM_KAT_H\n");
 	printf("static const unsigned char kat[] = \n{\n");
-	for(i = 0; i < sizeof w; ++i)
+	for(i = 0; i < MAX_SIZE; ++i)
 	{
-		unsigned char m[256];
-		unsigned char c[256 + 32];
+		unsigned char m[MAX_SIZE];
+		unsigned char c[MAX_SIZE + 32];
 		size_t mlen;
 		size_t clen;
 		size_t hlen;
@@ -75,6 +76,7 @@ static void genkat(void)
 	}
 	printf("};\n\n");
 	printf("#endif\n\n");
+#undef MAX_SIZE
 }
 
 int main()

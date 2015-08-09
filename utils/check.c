@@ -34,15 +34,16 @@ int storm_aead_decrypt(
 
 int check(const unsigned char *kat)
 {
-    unsigned char w[256];
-    unsigned char h[256];
+#define MAX_SIZE 256
+    unsigned char w[MAX_SIZE];
+    unsigned char h[MAX_SIZE];
     unsigned char k[32];
     unsigned char n[16];
 
     unsigned i;
     int place = 0;
 
-    for(i = 0; i < sizeof w; ++i)
+    for(i = 0; i < MAX_SIZE; ++i)
         w[i] = 255 & (i*197 + 123);
 
     for(i = 0; i < sizeof h; ++i)
@@ -54,10 +55,10 @@ int check(const unsigned char *kat)
     for(i = 0; i < sizeof n; ++i)
         n[i] = 255 & (i*181 + 123);
 
-    for(i = 0; i < sizeof w; ++i)
+    for(i = 0; i < MAX_SIZE; ++i)
     {
-        unsigned char m[256];
-        unsigned char c[256 + 32];
+        unsigned char m[MAX_SIZE];
+        unsigned char c[MAX_SIZE + 32];
         size_t mlen;
         size_t clen;
         size_t hlen;
@@ -86,6 +87,7 @@ int check(const unsigned char *kat)
 fail:
     printf("fail at %u:%d\n", i, place);
     return -1;
+#undef MAX_SIZE
 }
 
 int main()
