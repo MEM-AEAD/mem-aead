@@ -73,7 +73,7 @@
   L[15] = t;                                         \
 } while(0)
 
-#define V1_MASK_ROT_256(L) do {        \
+#define V1_MASK_ROT_768(L) do {        \
 	const __m256i t = LOADU256(&L[ 0]);  \
 	STOREU256(&L[ 0], LOADU256(&L[ 4])); \
 	STOREU256(&L[ 4], LOADU256(&L[ 8])); \
@@ -81,7 +81,7 @@
 	STOREU256(&L[12], t);                \
 } while(0)
 
-#define V1_MASK_ROT_768(L) do {        \
+#define V1_MASK_ROT_256(L) do {        \
 	const __m256i t = LOADU256(&L[12]);  \
   STOREU256(&L[12], LOADU256(&L[ 8])); \
   STOREU256(&L[ 8], LOADU256(&L[ 4])); \
@@ -117,6 +117,13 @@
   }                                         \
 } while(0)
 
+#define V1_XOR_ROTATED_MASK(B, L, R) do {                         \
+  int i;                                                          \
+  for(i = 0; i < 4; ++i) {                                        \
+    B[i] = XOR256(B[i], LOADU256(&L[(4*i + (16 - 4*R/256))%16])); \
+  }                                                               \
+} while(0)
+
 #define V1_ACCUMULATE(T, B) do { \
   int i;                         \
   for(i = 0; i < 4; ++i) {       \
@@ -134,6 +141,18 @@
   V1_XOR_MASK(B, L);                \
   V1_PERMUTE_B(B);                  \
   V1_XOR_MASK(B, L);                \
+} while(0)
+
+#define V1_BLOCKCIPHER_ROTATED_F(B, L, R) do { \
+  V1_XOR_ROTATED_MASK(B, L, R);                \
+  V1_PERMUTE_F(B);                             \
+  V1_XOR_ROTATED_MASK(B, L, R);                \
+} while(0)
+
+#define V1_BLOCKCIPHER_ROTATED_B(B, L, R) do { \
+  V1_XOR_ROTATED_MASK(B, L, R);                \
+  V1_PERMUTE_B(B);                             \
+  V1_XOR_ROTATED_MASK(B, L, R);                \
 } while(0)
 
 #endif

@@ -90,11 +90,9 @@ static void storm_hash_data(__m256i T[4], const uint8_t * h, size_t hlen, uint64
     __m256i B[4];
 
     STORM_PAD(lastblock, h, hlen);
-    V1_MASK_ROT_256(L); /* can be eliminated? */
     V1_LOAD_BLOCK(B, lastblock);
-    V1_BLOCKCIPHER_F(B, L);
+    V1_BLOCKCIPHER_ROTATED_F(B, L, 256);
     V1_ACCUMULATE(T, B);
-    V1_MASK_UPDATE(L);
     /* TODO: doublecheck that this is correct
              handling of the last block.
     */
@@ -139,9 +137,9 @@ static void storm_encrypt_data(__m256i T[4], uint8_t * c, const uint8_t * m, siz
     int i;
 
     STORM_PAD(lastblock, m, mlen);
-    V1_MASK_ROT_768(L); /* can be eliminated */
     V1_ZERO_BLOCK(B); /* encrypt zero, ala OCB */
-    V1_BLOCKCIPHER_F(B, L);
+    /* V1_BLOCKCIPHER_F(B, L); */
+    V1_BLOCKCIPHER_ROTATED_F(B, L, 768);
     for(i = 0; i < 4; ++i) { /* lastblock xor B and T xor last block */
       const __m256i M_i = LOADU256(&lastblock[32 * i]);
       T[i] = XOR256(T[i], M_i);
@@ -191,9 +189,9 @@ static void storm_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, siz
     int i;
 
     STORM_PAD(lastblock, c, clen);
-    V1_MASK_ROT_768(L); /* can be eliminated */
     V1_ZERO_BLOCK(B); /* encrypt zero, ala OCB */
-    V1_BLOCKCIPHER_F(B, L);
+    /* V1_BLOCKCIPHER_F(B, L); */
+    V1_BLOCKCIPHER_ROTATED_F(B, L, 768);
     for(i = 0; i < 4; ++i) { /* lastblock xor B */
       const __m256i C_i = LOADU256(&lastblock[32 * i]);
       STOREU256(&lastblock[32 * i], XOR256(B[i], C_i));
@@ -209,9 +207,10 @@ static void storm_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, siz
   }
 }
 
-static void storm_tag(__m256i * Te, const __m256i * Ta, const uint64_t * K) {
-  int i;
-
+static void storm_tag(__m256i * Te, const __m256i * Ta, const uint64_t * L) {
+  V1_BLOCKCIPHER_ROTATED_F(Te, L, 512);
+  V1_ACCUMULATE(Te, Ta);
+#if 0
   for(i = 0; i < 4; ++i) {
     Te[i] = XOR256(Te[i], LOADU256(&K[(4*i + 8)%16])); /* <<< 512 */
   }
@@ -221,6 +220,7 @@ static void storm_tag(__m256i * Te, const __m256i * Ta, const uint64_t * K) {
   for(i = 0; i < 4; ++i) {
     Te[i] = XOR256(Ta[i], XOR256(Te[i], LOADU256(&K[(4*i + 8)%16]))); /* <<< 512 */
   }
+#endif
 }
 
 #if defined(STORM_DEBUG)
