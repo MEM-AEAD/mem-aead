@@ -261,7 +261,7 @@ static STORM_INLINE void storm_absorb_lastblock(storm_state_t state, storm_state
     /* load data and XOR mask */
     for (i = 0; i < n; ++i)
     {
-        B[i] = LOAD(lastblock + i * BYTES(STORM_W)) ^ L[(i + 4) % n]; /* the offset is used to realise ROTL256 */
+        B[i] = LOAD(lastblock + i * BYTES(STORM_W)) ^ L[(i + 12) % n]; /* the offset is used to realise ROTL256 */
     }
 
     /* apply permutation */
@@ -270,7 +270,7 @@ static STORM_INLINE void storm_absorb_lastblock(storm_state_t state, storm_state
     /* XOR mask and absorb into state */
     for (i = 0; i < n; ++i)
     {
-        S[i] ^=  B[i] ^ L[(i + 4) % n]; /* the offset is used to realise ROTL256 */
+        S[i] ^=  B[i] ^ L[(i + 12) % n]; /* the offset is used to realise ROTL256 */
     }
 
 #if defined(STORM_DEBUG)
@@ -336,7 +336,7 @@ static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, storm_stat
     /* load block with mask */
     for (i = 0; i < n; ++i)
     {
-        B[i] = L[(i + 12) % n]; /* the offset is used to realise ROTL768 */
+        B[i] = L[(i + 4) % n]; /* the offset is used to realise ROTL768 */
     }
 
     /* apply permutation */
@@ -347,7 +347,7 @@ static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, storm_stat
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
         S[i] ^= LOAD(lastblock + i * BYTES(STORM_W));
-        STORE(lastblock + i * BYTES(STORM_W), B[i] ^ L[(i + 12) % n] ^ LOAD(lastblock + i * BYTES(STORM_W))); /* the offset is used to realise ROTL768 */
+        STORE(lastblock + i * BYTES(STORM_W), B[i] ^ L[(i + 4) % n] ^ LOAD(lastblock + i * BYTES(STORM_W))); /* the offset is used to realise ROTL768 */
     }
     memcpy(out, lastblock, inlen);
 
@@ -416,7 +416,7 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, storm_stat
     /* load block with key */
     for (i = 0; i < n; ++i)
     {
-        B[i] = L[(i + 12) % n]; /* the offset is used to realise ROTL768 */
+        B[i] = L[(i + 4) % n]; /* the offset is used to realise ROTL768 */
     }
 
     /* apply permutation */
@@ -426,7 +426,7 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, storm_stat
     storm_pad(lastblock, in, inlen);
     for (i = 0; i < n; ++i)
     {
-        STORE(lastblock + i * BYTES(STORM_W), B[i] ^ L[(i + 12) % n] ^ LOAD(lastblock + i * BYTES(STORM_W))); /* the offset is used to realise ROTL768 */
+        STORE(lastblock + i * BYTES(STORM_W), B[i] ^ L[(i + 4) % n] ^ LOAD(lastblock + i * BYTES(STORM_W))); /* the offset is used to realise ROTL768 */
     }
     memcpy(out, lastblock, inlen);
 
