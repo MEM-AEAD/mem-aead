@@ -2,18 +2,13 @@ CFLAGS=-O3 -mcpu=cortex-a8 -mfpu=neon -std=c99 -Wall -Wextra -pedantic -Wno-long
 
 all: check bench
 
+debug:
+	@$(CC) $(CFLAGS) -o debug ../../utils/debug.c storm.c
+	@./debug
+	@rm debug
+
 bench:
 	@$(CC) $(CFLAGS) -o bench ../../utils/bench.c storm.c
-	@./bench
-	@rm bench
-
-benchM4:
-	@$(CC) $(CFLAGS) -DM4 -o bench ../../utils/bench.c storm.c
-	@./bench
-	@rm bench
-
-benchM256:
-	@$(CC) $(CFLAGS) -DM256 -o bench ../../utils/bench.c storm.c
 	@./bench
 	@rm bench
 
@@ -21,8 +16,3 @@ check:
 	@$(CC) $(CFLAGS) -I. -o check ../../utils/check.c storm.c
 	@./check
 	@rm check
-
-genkat:
-	@$(CC) $(CFLAGS) -o genkat ../../utils/genkat.c storm.c
-	@./genkat > kat.h
-	@rm genkat

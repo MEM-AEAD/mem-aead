@@ -497,7 +497,8 @@ do                                                                              
 } while(0)
 
 #define FINALISE(SA, SE, L)                \
-do {                                       \
+do                                         \
+{                                          \
     SE[0] = XOR(SE[0], L[4]);              \
     SE[1] = XOR(SE[1], L[5]);              \
     SE[2] = XOR(SE[2], L[6]);              \
