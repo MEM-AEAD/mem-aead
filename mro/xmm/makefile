@@ -2,13 +2,13 @@ CFLAGS=-O3 -march=native -std=c89 -Wall -Wextra -pedantic -Wno-long-long
 
 all: check bench
 
+debug:
+	@$(CC) $(CFLAGS) -o debug ../../utils/debug.c storm.c
+	@./debug
+	@rm debug
+
 bench:
 	@$(CC) $(CFLAGS) -o bench ../../utils/bench.c storm.c
-	@./bench
-	@rm bench
-
-benchM4:
-	@$(CC) $(CFLAGS) -DM4 -o bench ../../utils/bench.c storm.c
 	@./bench
 	@rm bench
 

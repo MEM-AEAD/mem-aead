@@ -204,40 +204,19 @@ do                                                 \
     PERMUTE(K);                                    \
 } while(0)
 
-
-#if defined(M4)
-#define UPDATE(K)                                                            \
-do                                                                           \
-{                                                                            \
-    __m128i T00, T01, T10, T11, T20, T21, T30, T31;                          \
-    T00 = _mm_xor_si128(_mm_slli_epi64(K[0], 53), _mm_srli_epi64(K[0], 11)); \
-    T01 = _mm_xor_si128(_mm_slli_epi64(K[1], 53), _mm_srli_epi64(K[1], 11)); \
-    T10 = _mm_alignr_epi8(K[3], K[2], 8);                                    \
-    T11 = _mm_alignr_epi8(K[4], K[3], 8);                                    \
-    T20 = _mm_slli_epi64(T10, 13);                                           \
-    T21 = _mm_slli_epi64(T11, 13);                                           \
-    T30 = _mm_xor_si128(T20, T00);                                           \
-    T31 = _mm_xor_si128(T21, T01);                                           \
-    K[0] = K[2]; K[1] = K[3];                                                \
-    K[2] = K[4]; K[3] = K[5];                                                \
-    K[4] = K[6]; K[5] = K[7];                                                \
-    K[6] = T30;  K[7] = T31;                                                 \
+#define UPDATE(K)                                                                                         \
+do                                                                                                        \
+{                                                                                                         \
+    __m128i T = XOR(ROT(_mm_set_epi64x(0, K[0][0]), 11), _mm_slli_epi64(_mm_set_epi64x(0, K[2][1]), 13)); \
+    K[0] = _mm_set_epi64x(K[1][0], K[0][1]);                                                              \
+    K[1] = _mm_set_epi64x(K[2][0], K[1][1]);                                                              \
+    K[2] = _mm_set_epi64x(K[3][0], K[2][1]);                                                              \
+    K[3] = _mm_set_epi64x(K[4][0], K[3][1]);                                                              \
+    K[4] = _mm_set_epi64x(K[5][0], K[4][1]);                                                              \
+    K[5] = _mm_set_epi64x(K[6][0], K[5][1]);                                                              \
+    K[6] = _mm_set_epi64x(K[7][0], K[6][1]);                                                              \
+    K[7] = _mm_set_epi64x(T[0],    K[7][1]);                                                              \
 } while(0)
-#else
-#define UPDATE(K)                                                                                       \
-do                                                                                                      \
-{                                                                                                       \
-    __m128i T = XOR(ROT(_mm_set_epi64x(0, K[0][0]), 9), _mm_srli_epi64(_mm_set_epi64x(0, K[4][1]), 7)); \
-    K[0] = _mm_set_epi64x(K[1][0], K[0][1]);                                                            \
-    K[1] = _mm_set_epi64x(K[2][0], K[1][1]);                                                            \
-    K[2] = _mm_set_epi64x(K[3][0], K[2][1]);                                                            \
-    K[3] = _mm_set_epi64x(K[4][0], K[3][1]);                                                            \
-    K[4] = _mm_set_epi64x(K[5][0], K[4][1]);                                                            \
-    K[5] = _mm_set_epi64x(K[6][0], K[5][1]);                                                            \
-    K[6] = _mm_set_epi64x(K[7][0], K[6][1]);                                                            \
-    K[7] = _mm_set_epi64x(T[0],    K[7][1]);                                                            \
-} while(0)
-#endif
 
 #define ABSORB_BLOCK(S, K, IN)         \
 do                                     \
@@ -331,15 +310,15 @@ do                                                     \
 #define ABSORB_DATA(S, K, IN, INLEN)                        \
 do                                                          \
 {                                                           \
-    if(INLEN > 0)                                           \
+    size_t i = 0;                                           \
+    size_t l = INLEN;                                       \
+    while(l >= BYTES(STORM_B))                              \
     {                                                       \
-        size_t i = 0;                                       \
-        size_t l = INLEN;                                   \
-        while(l >= BYTES(STORM_B))                          \
-        {                                                   \
-            ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                    \
-        }                                                   \
+        ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                        \
+    }                                                       \
+    if(l > 0)                                               \
+    {                                                       \
         ABSORB_LASTBLOCK(S, K, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
@@ -347,15 +326,15 @@ do                                                          \
 #define ENCRYPT_DATA(K, OUT, IN, INLEN)                                                \
 do                                                                                     \
 {                                                                                      \
-    if(INLEN > 0)                                                                      \
+    size_t i = 0;                                                                      \
+    size_t l = INLEN;                                                                  \
+    while(l >= BYTES(STORM_B))                                                         \
     {                                                                                  \
-        size_t i = 0;                                                                  \
-        size_t l = INLEN;                                                              \
-        while(l >= BYTES(STORM_B))                                                     \
-        {                                                                              \
-            ENCRYPT_BLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                                               \
-        }                                                                              \
+        ENCRYPT_BLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                                                   \
+    }                                                                                  \
+    if(l > 0)                                                                          \
+    {                                                                                  \
         ENCRYPT_LASTBLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)

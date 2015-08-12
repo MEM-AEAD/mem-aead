@@ -167,77 +167,17 @@ static STORM_INLINE void storm_init(storm_state_t k, const unsigned char * key, 
 
 }
 
-#if defined(M4)
-static STORM_INLINE void storm_update(storm_state_t k)
-{
-    storm_word_t * K = k->S;
-    storm_word_t t0 = ROTR(K[0], 9) ^ (K[ 9] >> 7);
-    storm_word_t t1 = ROTR(K[1], 9) ^ (K[10] >> 7);
-    storm_word_t t2 = ROTR(K[2], 9) ^ (K[11] >> 7);
-    storm_word_t t3 = ROTR(K[3], 9) ^ (K[12] >> 7);
-
-    K[ 0] = K[ 4];
-    K[ 1] = K[ 5];
-    K[ 2] = K[ 6];
-    K[ 3] = K[ 7];
-
-    K[ 4] = K[ 8];
-    K[ 5] = K[ 9];
-    K[ 6] = K[10];
-    K[ 7] = K[11];
-
-    K[ 8] = K[12];
-    K[ 9] = K[13];
-    K[10] = K[14];
-    K[11] = K[15];
-
-    K[12] = t0;
-    K[13] = t1;
-    K[14] = t2;
-    K[15] = t3;
-}
-#elif defined(M256)
-static STORM_INLINE void storm_update(storm_state_t k)
-{
-    storm_word_t * K = k->S;
-    storm_word_t t0 = K[1];
-    storm_word_t t1 = K[2];
-    storm_word_t t2 = K[3];
-    storm_word_t t3 = ROTR(K[0], 61) ^ (K[ 3] >> 5);
-
-    K[ 0] = t0;
-    K[ 1] = t1;
-    K[ 2] = t2;
-    K[ 3] = t3;
-
-    K[ 4] = t0;
-    K[ 5] = t1;
-    K[ 6] = t2;
-    K[ 7] = t3;
-
-    K[ 8] = t0;
-    K[ 9] = t1;
-    K[10] = t2;
-    K[11] = t3;
-
-    K[12] = t0;
-    K[13] = t1;
-    K[14] = t2;
-    K[15] = t3;
-}
-#else
 static STORM_INLINE void storm_update(storm_state_t k)
 {
     size_t i;
     storm_word_t * K = k->S;
-    storm_word_t t = ROTR(K[0], 9) ^ (K[9] >> 7);
+    storm_word_t t = ROTR(K[0], 11) ^ (K[5] << 13);
     for (i = 0; i < WORDS(STORM_B) - 1; ++i)
     {
         K[i] = K[i+1];
     }
     K[15] = t;
 }
-#endif
 
 static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t k, const uint8_t * in)
 {
@@ -283,8 +223,8 @@ static STORM_INLINE void storm_absorb_lastblock(storm_state_t state, storm_state
     burn(block, 0, BYTES(STORM_B));
 }
 
-static STORM_INLINE void storm_absorb_finalise(storm_state_t state, storm_state_t k, size_t hlen, size_t mlen) {
-
+static STORM_INLINE void storm_absorb_finalise(storm_state_t state, storm_state_t k, size_t hlen, size_t mlen)
+{
     size_t i;
     storm_state_t block;
     storm_word_t * B = block->S;
@@ -355,31 +295,31 @@ static STORM_INLINE void storm_encrypt_lastblock(const storm_state_t k, size_t b
 /* low-level interface functions */
 void storm_absorb_data(storm_state_t state, storm_state_t k, const unsigned char * in, size_t inlen)
 {
-    if(inlen > 0)
+    while (inlen >= BYTES(STORM_B))
     {
-        while (inlen >= BYTES(STORM_B))
-        {
-            storm_absorb_block(state, k, in);
-            inlen -= BYTES(STORM_B);
-            in    += BYTES(STORM_B);
-        }
+        storm_absorb_block(state, k, in);
+        inlen -= BYTES(STORM_B);
+        in    += BYTES(STORM_B);
+    }
+    if (inlen > 0)
+    {
         storm_absorb_lastblock(state, k, in, inlen);
     }
 }
 
 void storm_encrypt_data(const storm_state_t k, unsigned char * out, const unsigned char * in, size_t inlen)
 {
-    if(inlen > 0)
+    size_t i = 0;
+    while (inlen >= BYTES(STORM_B))
     {
-        size_t i = 0;
-        while (inlen >= BYTES(STORM_B))
-        {
-            storm_encrypt_block(k, i, out, in);
-            inlen -= BYTES(STORM_B);
-            in    += BYTES(STORM_B);
-            out   += BYTES(STORM_B);
-            i += 1;
-        }
+        storm_encrypt_block(k, i, out, in);
+        inlen -= BYTES(STORM_B);
+        in    += BYTES(STORM_B);
+        out   += BYTES(STORM_B);
+        i += 1;
+    }
+    if (inlen > 0)
+    {
         storm_encrypt_lastblock(k, i, out, in, inlen);
     }
 }
@@ -436,7 +376,7 @@ void storm_aead_encrypt(
 
     /* absorb header and message */
     memset(state, 0, sizeof(storm_state_t));
-    storm_init(k, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
+    storm_init(k, key, nonce, WORDS(STORM_N), ABS_TAG);
     storm_absorb_data(state, k, h, hlen);
     storm_absorb_data(state, k, m, mlen);
     storm_absorb_finalise(state, k, hlen, mlen);
@@ -446,7 +386,7 @@ void storm_aead_encrypt(
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
-    storm_init(k, key, c + mlen, WORDS(STORM_T), ENC_TAG); /* K_e */
+    storm_init(k, key, c + mlen, WORDS(STORM_T), ENC_TAG);
     storm_encrypt_data(k, c, m, mlen);
 
     /* empty buffers */
@@ -466,17 +406,16 @@ int storm_aead_decrypt(
     unsigned char tag[BYTES(STORM_T)];
     storm_state_t state, k;
 
-    if (clen < BYTES(STORM_T))
-        return -1;
+    if (clen < BYTES(STORM_T)) { return -1; }
 
     /* decrypt message */
-    storm_init(k, key, c + clen - BYTES(STORM_T), WORDS(STORM_T), ENC_TAG); /* K_e */
+    storm_init(k, key, c + clen - BYTES(STORM_T), WORDS(STORM_T), ENC_TAG);
     storm_decrypt_data(k, m, c, clen - BYTES(STORM_T));
     *mlen = clen - BYTES(STORM_T);
 
     /* absorb header and message */
     memset(state, 0, sizeof(storm_state_t));
-    storm_init(k, key, nonce, WORDS(STORM_N), ABS_TAG); /* K_a */
+    storm_init(k, key, nonce, WORDS(STORM_N), ABS_TAG);
     storm_absorb_data(state, k, h, hlen);
     storm_absorb_data(state, k, m, *mlen);
     storm_absorb_finalise(state, k, hlen, *mlen);
@@ -488,10 +427,7 @@ int storm_aead_decrypt(
     result = storm_verify_tag(c + clen - BYTES(STORM_T), tag);
 
     /* burn decrypted plaintext on authentication failure */
-    if(result != 0)
-    {
-        burn(m, 0, *mlen);
-    }
+    if (result != 0) { burn(m, 0, *mlen); }
 
     /* empty buffers */
     burn(state, 0, sizeof(storm_state_t));

@@ -159,18 +159,18 @@ do {                                                            \
     PERMUTE(K);                                                 \
 } while(0)
 
-#define UPDATE(K)                                                                                                     \
-do                                                                                                                    \
-{                                                                                                                     \
-    uint64x2_t T = XOR(ROT(COMBU64( LOU64(K[0]), vcreate_u64(0)), 9), SHR(COMBU64( HIU64(K[4]), vcreate_u64(0)), 7)); \
-    K[0] = COMBU64( HIU64(K[0]), LOU64(K[1]));                                                                        \
-    K[1] = COMBU64( HIU64(K[1]), LOU64(K[2]));                                                                        \
-    K[2] = COMBU64( HIU64(K[2]), LOU64(K[3]));                                                                        \
-    K[3] = COMBU64( HIU64(K[3]), LOU64(K[4]));                                                                        \
-    K[4] = COMBU64( HIU64(K[4]), LOU64(K[5]));                                                                        \
-    K[5] = COMBU64( HIU64(K[5]), LOU64(K[6]));                                                                        \
-    K[6] = COMBU64( HIU64(K[6]), LOU64(K[7]));                                                                        \
-    K[7] = COMBU64( HIU64(K[7]), LOU64(T   ));                                                                        \
+#define UPDATE(K)                                                                                                       \
+do                                                                                                                      \
+{                                                                                                                       \
+    uint64x2_t T = XOR(ROT(COMBU64( LOU64(K[0]), vcreate_u64(0)), 11), SHL(COMBU64( HIU64(K[2]), vcreate_u64(0)), 13)); \
+    K[0] = COMBU64( HIU64(K[0]), LOU64(K[1]));                                                                          \
+    K[1] = COMBU64( HIU64(K[1]), LOU64(K[2]));                                                                          \
+    K[2] = COMBU64( HIU64(K[2]), LOU64(K[3]));                                                                          \
+    K[3] = COMBU64( HIU64(K[3]), LOU64(K[4]));                                                                          \
+    K[4] = COMBU64( HIU64(K[4]), LOU64(K[5]));                                                                          \
+    K[5] = COMBU64( HIU64(K[5]), LOU64(K[6]));                                                                          \
+    K[6] = COMBU64( HIU64(K[6]), LOU64(K[7]));                                                                          \
+    K[7] = COMBU64( HIU64(K[7]), LOU64(T   ));                                                                          \
 } while(0)
 
 #define ABSORB_BLOCK(S, K, IN)         \
@@ -265,15 +265,15 @@ do                                                     \
 #define ABSORB_DATA(S, K, IN, INLEN)                        \
 do                                                          \
 {                                                           \
-    if (INLEN > 0)                                          \
+    size_t i = 0;                                           \
+    size_t l = INLEN;                                       \
+    while (l >= BYTES(STORM_B))                             \
     {                                                       \
-        size_t i = 0;                                       \
-        size_t l = INLEN;                                   \
-        while (l >= BYTES(STORM_B))                         \
-        {                                                   \
-            ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                    \
-        }                                                   \
+        ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                        \
+    }                                                       \
+    if (l > 0)                                              \
+    {                                                       \
         ABSORB_LASTBLOCK(S, K, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
@@ -281,15 +281,15 @@ do                                                          \
 #define ENCRYPT_DATA(K, OUT, IN, INLEN)                                                \
 do                                                                                     \
 {                                                                                      \
-    if (INLEN > 0)                                                                     \
+    size_t i = 0;                                                                      \
+    size_t l = INLEN;                                                                  \
+    while (l >= BYTES(STORM_B))                                                        \
     {                                                                                  \
-        size_t i = 0;                                                                  \
-        size_t l = INLEN;                                                              \
-        while (l >= BYTES(STORM_B))                                                    \
-        {                                                                              \
-            ENCRYPT_BLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));    \
-            i += 1; l -= BYTES(STORM_B);                                               \
-        }                                                                              \
+        ENCRYPT_BLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
+        i += 1; l -= BYTES(STORM_B);                                                   \
+    }                                                                                  \
+    if (l > 0)                                                                         \
+    {                                                                                  \
         ENCRYPT_LASTBLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
