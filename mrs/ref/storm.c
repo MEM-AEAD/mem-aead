@@ -260,44 +260,42 @@ void storm_init(storm_state_t state, const unsigned char * k, const unsigned cha
 
 void storm_absorb_data(storm_state_t state, const unsigned char * in, size_t inlen)
 {
-    if(inlen > 0)
+    while (inlen >= BYTES(STORM_B))
     {
-        while (inlen >= BYTES(STORM_B))
-        {
-            storm_absorb_block(state, in);
-            inlen -= BYTES(STORM_B);
-            in    += BYTES(STORM_B);
-        }
+        storm_absorb_block(state, in);
+        inlen -= BYTES(STORM_B);
+        in    += BYTES(STORM_B);
+    }
+    if(inlen > 0) {
         storm_absorb_lastblock(state, in, inlen);
     }
 }
 
 void storm_encrypt_data(storm_state_t state, unsigned char * out, const unsigned char * in, size_t inlen)
 {
-    if(inlen > 0)
+
+    while (inlen >= BYTES(RATE))
     {
-        while (inlen >= BYTES(RATE))
-        {
-            storm_encrypt_block(state, out, in);
-            inlen -= BYTES(RATE);
-            in    += BYTES(RATE);
-            out   += BYTES(RATE);
-        }
+        storm_encrypt_block(state, out, in);
+        inlen -= BYTES(RATE);
+        in    += BYTES(RATE);
+        out   += BYTES(RATE);
+    }
+    if(inlen > 0) {
         storm_encrypt_lastblock(state, out, in, inlen);
     }
 }
 
 void storm_decrypt_data(storm_state_t state, unsigned char * out, const unsigned char * in, size_t inlen)
 {
-    if(inlen > 0)
+    while (inlen >= BYTES(RATE))
     {
-        while (inlen >= BYTES(RATE))
-        {
-            storm_decrypt_block(state, out, in);
-            inlen -= BYTES(RATE);
-            in    += BYTES(RATE);
-            out   += BYTES(RATE);
-        }
+        storm_decrypt_block(state, out, in);
+        inlen -= BYTES(RATE);
+        in    += BYTES(RATE);
+        out   += BYTES(RATE);
+    }
+    if(inlen > 0) {
         storm_decrypt_lastblock(state, out, in, inlen);
     }
 }
