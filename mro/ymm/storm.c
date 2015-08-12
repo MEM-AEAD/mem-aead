@@ -157,10 +157,25 @@ static void storm_encrypt_data(
   storm_init_enc(K, k, n);
 
   if(mlen >= 4 * BYTES(STORM_B)) {
-    __m256i B[16];
-    for(i = 0; i < 4; ++i)
-      memcpy(&B[4*i], K, BYTES(STORM_B));
-    V4_TRANSPOSE_F(K_, B);
+    K_[ 0] = _mm256_set1_epi64x(_mm256_extract_epi64(K[0], 0));
+    K_[ 1] = _mm256_set1_epi64x(_mm256_extract_epi64(K[0], 1));
+    K_[ 2] = _mm256_set1_epi64x(_mm256_extract_epi64(K[0], 2));
+    K_[ 3] = _mm256_set1_epi64x(_mm256_extract_epi64(K[0], 3));
+
+    K_[ 4] = _mm256_set1_epi64x(_mm256_extract_epi64(K[1], 0));
+    K_[ 5] = _mm256_set1_epi64x(_mm256_extract_epi64(K[1], 1));
+    K_[ 6] = _mm256_set1_epi64x(_mm256_extract_epi64(K[1], 2));
+    K_[ 7] = _mm256_set1_epi64x(_mm256_extract_epi64(K[1], 3));
+
+    K_[ 8] = _mm256_set1_epi64x(_mm256_extract_epi64(K[2], 0));
+    K_[ 9] = _mm256_set1_epi64x(_mm256_extract_epi64(K[2], 1));
+    K_[10] = _mm256_set1_epi64x(_mm256_extract_epi64(K[2], 2));
+    K_[11] = _mm256_set1_epi64x(_mm256_extract_epi64(K[2], 3));
+
+    K_[12] = _mm256_set1_epi64x(_mm256_extract_epi64(K[3], 0));
+    K_[13] = _mm256_set1_epi64x(_mm256_extract_epi64(K[3], 1));
+    K_[14] = _mm256_set1_epi64x(_mm256_extract_epi64(K[3], 2));
+    K_[15] = _mm256_set1_epi64x(_mm256_extract_epi64(K[3], 3));
   }
 
   while(mlen >= 4 * BYTES(STORM_B)) {
