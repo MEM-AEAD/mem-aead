@@ -53,6 +53,7 @@
 #define SHL(X, C) vshlq_n_u64((X), (C))
 #define SHR(X, C) vshrq_n_u64((X), (C))
 #define ROT(X, C) XOR(SHR(X, C), SHL(X, (STORM_W)-(C)))
+#define ZERO vdupq_n_u64(0)
 
 /* quarter round */
 #define G(S)                                           \
@@ -143,163 +144,163 @@ do                                  \
     OUT[OUTLEN - 1] |= 0x80;        \
 } while(0)
 
-#define INIT(K, KEY, IV, IVLEN, TAG)                            \
+#define INIT_MASK(L, KEY, IV, IVLEN, TAG)                       \
 do {                                                            \
     size_t i;                                                   \
-    K[0] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
-    K[1] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
+    L[0] = ZERO;                                                \
+    L[1] = ZERO;                                                \
     for (i = 0; i < IVLEN; ++i)                                 \
     {                                                           \
-        K[i] = LOADU(IV + i * 2 * BYTES(STORM_W));              \
+        L[i] = LOADU(IV + i * 2 * BYTES(STORM_W));              \
     }                                                           \
-    K[2] = LOADU(KEY +  0);                                     \
-    K[3] = LOADU(KEY + 16);                                     \
-    K[4] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
-    K[5] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
-    K[6] = COMBU64(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
-    K[7] = COMBU64(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
-    PERMUTE(K);                                                 \
+    L[2] = LOADU(KEY +  0);                                     \
+    L[3] = LOADU(KEY + 16);                                     \
+    L[4] = ZERO;                                                \
+    L[5] = ZERO;                                                \
+    L[6] = COMBU64(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
+    L[7] = COMBU64(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
+    PERMUTE(L);                                                 \
 } while(0)
 
-#define UPDATE(K)                                                                                                       \
-do                                                                                                                      \
-{                                                                                                                       \
-    uint64x2_t T = XOR(ROT(COMBU64( LOU64(K[0]), vcreate_u64(0)), 11), SHL(COMBU64( HIU64(K[2]), vcreate_u64(0)), 13)); \
-    K[0] = COMBU64( HIU64(K[0]), LOU64(K[1]));                                                                          \
-    K[1] = COMBU64( HIU64(K[1]), LOU64(K[2]));                                                                          \
-    K[2] = COMBU64( HIU64(K[2]), LOU64(K[3]));                                                                          \
-    K[3] = COMBU64( HIU64(K[3]), LOU64(K[4]));                                                                          \
-    K[4] = COMBU64( HIU64(K[4]), LOU64(K[5]));                                                                          \
-    K[5] = COMBU64( HIU64(K[5]), LOU64(K[6]));                                                                          \
-    K[6] = COMBU64( HIU64(K[6]), LOU64(K[7]));                                                                          \
-    K[7] = COMBU64( HIU64(K[7]), LOU64(T   ));                                                                          \
+#define UPDATE_MASK(L)                                                                                                       \
+do                                                                                     \
+{                                                                                      \
+    uint64x2_t T = XOR(ROT(L[0], 11), SHL(COMBU64( HIU64(L[2]), vcreate_u64(0)), 13)); \
+    L[0] = COMBU64(HIU64(L[0]), LOU64(L[1]));                                          \
+    L[1] = COMBU64(HIU64(L[1]), LOU64(L[2]));                                          \
+    L[2] = COMBU64(HIU64(L[2]), LOU64(L[3]));                                          \
+    L[3] = COMBU64(HIU64(L[3]), LOU64(L[4]));                                          \
+    L[4] = COMBU64(HIU64(L[4]), LOU64(L[5]));                                          \
+    L[5] = COMBU64(HIU64(L[5]), LOU64(L[6]));                                          \
+    L[6] = COMBU64(HIU64(L[6]), LOU64(L[7]));                                          \
+    L[7] = COMBU64(HIU64(L[7]), LOU64(T   ));                                          \
 } while(0)
 
-#define ABSORB_BLOCK(S, K, IN)         \
+#define ABSORB_BLOCK(S, L, IN)         \
 do                                     \
 {                                      \
     uint64x2_t B[8];                   \
-    B[0] = XOR(K[0], LOADU(IN +   0)); \
-    B[1] = XOR(K[1], LOADU(IN +  16)); \
-    B[2] = XOR(K[2], LOADU(IN +  32)); \
-    B[3] = XOR(K[3], LOADU(IN +  48)); \
-    B[4] = XOR(K[4], LOADU(IN +  64)); \
-    B[5] = XOR(K[5], LOADU(IN +  80)); \
-    B[6] = XOR(K[6], LOADU(IN +  96)); \
-    B[7] = XOR(K[7], LOADU(IN + 112)); \
+    B[0] = XOR(L[0], LOADU(IN +   0)); \
+    B[1] = XOR(L[1], LOADU(IN +  16)); \
+    B[2] = XOR(L[2], LOADU(IN +  32)); \
+    B[3] = XOR(L[3], LOADU(IN +  48)); \
+    B[4] = XOR(L[4], LOADU(IN +  64)); \
+    B[5] = XOR(L[5], LOADU(IN +  80)); \
+    B[6] = XOR(L[6], LOADU(IN +  96)); \
+    B[7] = XOR(L[7], LOADU(IN + 112)); \
     PERMUTE(B);                        \
-    S[0] = XOR(S[0], XOR(K[0], B[0])); \
-    S[1] = XOR(S[1], XOR(K[1], B[1])); \
-    S[2] = XOR(S[2], XOR(K[2], B[2])); \
-    S[3] = XOR(S[3], XOR(K[3], B[3])); \
-    S[4] = XOR(S[4], XOR(K[4], B[4])); \
-    S[5] = XOR(S[5], XOR(K[5], B[5])); \
-    S[6] = XOR(S[6], XOR(K[6], B[6])); \
-    S[7] = XOR(S[7], XOR(K[7], B[7])); \
-    UPDATE(K);                         \
+    S[0] = XOR(S[0], XOR(L[0], B[0])); \
+    S[1] = XOR(S[1], XOR(L[1], B[1])); \
+    S[2] = XOR(S[2], XOR(L[2], B[2])); \
+    S[3] = XOR(S[3], XOR(L[3], B[3])); \
+    S[4] = XOR(S[4], XOR(L[4], B[4])); \
+    S[5] = XOR(S[5], XOR(L[5], B[5])); \
+    S[6] = XOR(S[6], XOR(L[6], B[6])); \
+    S[7] = XOR(S[7], XOR(L[7], B[7])); \
+    UPDATE_MASK(L);                    \
 } while(0)
 
-#define ABSORB_LASTBLOCK(S, K, IN, INLEN)          \
+#define ABSORB_LASTBLOCK(S, L, IN, INLEN)          \
 do                                                 \
 {                                                  \
     ALIGN(32) unsigned char BLOCK[BYTES(STORM_B)]; \
     PAD(BLOCK, sizeof BLOCK, IN, INLEN);           \
-    ABSORB_BLOCK(S, K, BLOCK);                     \
+    ABSORB_BLOCK(S, L, BLOCK);                     \
 } while(0)
 
-#define ABSORB_FINALISE(S, K, HLEN, MLEN)                            \
+#define FINALISE(S, L, HLEN, MLEN)                                   \
 do                                                                   \
 {                                                                    \
     uint64x2_t B[8];                                                 \
-    B[0] = K[0];                                                     \
-    B[1] = K[1];                                                     \
-    B[2] = K[2];                                                     \
-    B[3] = K[3];                                                     \
-    B[4] = K[4];                                                     \
-    B[5] = K[5];                                                     \
-    B[6] = K[6];                                                     \
-    B[7] = XOR(K[7], COMBU64(vcreate_u64(HLEN), vcreate_u64(MLEN))); \
+    B[0] = L[0];                                                     \
+    B[1] = L[1];                                                     \
+    B[2] = L[2];                                                     \
+    B[3] = L[3];                                                     \
+    B[4] = L[4];                                                     \
+    B[5] = L[5];                                                     \
+    B[6] = L[6];                                                     \
+    B[7] = XOR(L[7], COMBU64(vcreate_u64(HLEN), vcreate_u64(MLEN))); \
     PERMUTE(B);                                                      \
-    S[0] = XOR(S[0], XOR(K[0], B[0]));                               \
-    S[1] = XOR(S[1], XOR(K[1], B[1]));                               \
-    S[2] = XOR(S[2], XOR(K[2], B[2]));                               \
-    S[3] = XOR(S[3], XOR(K[3], B[3]));                               \
-    S[4] = XOR(S[4], XOR(K[4], B[4]));                               \
-    S[5] = XOR(S[5], XOR(K[5], B[5]));                               \
-    S[6] = XOR(S[6], XOR(K[6], B[6]));                               \
-    S[7] = XOR(S[7], XOR(K[7], B[7]));                               \
-    UPDATE(K);                                                       \
+    S[0] = XOR(S[0], XOR(L[0], B[0]));                               \
+    S[1] = XOR(S[1], XOR(L[1], B[1]));                               \
+    S[2] = XOR(S[2], XOR(L[2], B[2]));                               \
+    S[3] = XOR(S[3], XOR(L[3], B[3]));                               \
+    S[4] = XOR(S[4], XOR(L[4], B[4]));                               \
+    S[5] = XOR(S[5], XOR(L[5], B[5]));                               \
+    S[6] = XOR(S[6], XOR(L[6], B[6]));                               \
+    S[7] = XOR(S[7], XOR(L[7], B[7]));                               \
+    UPDATE_MASK(L);                                                  \
 } while(0)
 
-#define ENCRYPT_BLOCK(K, BLOCK_NR, OUT, IN)                           \
+#define ENCRYPT_BLOCK(L, BLOCK_NR, OUT, IN)                           \
 do                                                                    \
 {                                                                     \
     uint64x2_t B[8];                                                  \
-    B[0] = K[0];                                                      \
-    B[1] = K[1];                                                      \
-    B[2] = K[2];                                                      \
-    B[3] = K[3];                                                      \
-    B[4] = K[4];                                                      \
-    B[5] = K[5];                                                      \
-    B[6] = K[6];                                                      \
-    B[7] = XOR(K[7], COMBU64(vcreate_u64(0), vcreate_u64(BLOCK_NR))); \
+    B[0] = L[0];                                                      \
+    B[1] = L[1];                                                      \
+    B[2] = L[2];                                                      \
+    B[3] = L[3];                                                      \
+    B[4] = L[4];                                                      \
+    B[5] = L[5];                                                      \
+    B[6] = L[6];                                                      \
+    B[7] = XOR(L[7], COMBU64(vcreate_u64(0), vcreate_u64(BLOCK_NR))); \
     PERMUTE(B);                                                       \
-    STOREU(OUT +   0, XOR(B[0], XOR(K[0], LOADU(IN +   0))));         \
-    STOREU(OUT +  16, XOR(B[1], XOR(K[1], LOADU(IN +  16))));         \
-    STOREU(OUT +  32, XOR(B[2], XOR(K[2], LOADU(IN +  32))));         \
-    STOREU(OUT +  48, XOR(B[3], XOR(K[3], LOADU(IN +  48))));         \
-    STOREU(OUT +  64, XOR(B[4], XOR(K[4], LOADU(IN +  64))));         \
-    STOREU(OUT +  80, XOR(B[5], XOR(K[5], LOADU(IN +  80))));         \
-    STOREU(OUT +  96, XOR(B[6], XOR(K[6], LOADU(IN +  96))));         \
-    STOREU(OUT + 112, XOR(B[7], XOR(K[7], LOADU(IN + 112))));         \
+    STOREU(OUT +   0, XOR(B[0], XOR(L[0], LOADU(IN +   0))));         \
+    STOREU(OUT +  16, XOR(B[1], XOR(L[1], LOADU(IN +  16))));         \
+    STOREU(OUT +  32, XOR(B[2], XOR(L[2], LOADU(IN +  32))));         \
+    STOREU(OUT +  48, XOR(B[3], XOR(L[3], LOADU(IN +  48))));         \
+    STOREU(OUT +  64, XOR(B[4], XOR(L[4], LOADU(IN +  64))));         \
+    STOREU(OUT +  80, XOR(B[5], XOR(L[5], LOADU(IN +  80))));         \
+    STOREU(OUT +  96, XOR(B[6], XOR(L[6], LOADU(IN +  96))));         \
+    STOREU(OUT + 112, XOR(B[7], XOR(L[7], LOADU(IN + 112))));         \
 } while(0)
 
-#define ENCRYPT_LASTBLOCK(K, BLOCK_NR, OUT, IN, INLEN) \
+#define ENCRYPT_LASTBLOCK(L, BLOCK_NR, OUT, IN, INLEN) \
 do                                                     \
 {                                                      \
     ALIGN(32) unsigned char BLOCK[BYTES(STORM_B)];     \
     memset(BLOCK, 0, BYTES(STORM_B));                  \
     memcpy(BLOCK, IN, INLEN);                          \
-    ENCRYPT_BLOCK(K, BLOCK_NR, BLOCK, BLOCK);          \
+    ENCRYPT_BLOCK(L, BLOCK_NR, BLOCK, BLOCK);          \
     memcpy(OUT, BLOCK, INLEN);                         \
 } while(0)
 
-#define ABSORB_DATA(S, K, IN, INLEN)                        \
+#define ABSORB_DATA(S, L, IN, INLEN)                        \
 do                                                          \
 {                                                           \
     size_t i = 0;                                           \
     size_t l = INLEN;                                       \
     while (l >= BYTES(STORM_B))                             \
     {                                                       \
-        ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));        \
+        ABSORB_BLOCK(S, L, IN + i * BYTES(STORM_B));        \
         i += 1; l -= BYTES(STORM_B);                        \
     }                                                       \
     if (l > 0)                                              \
     {                                                       \
-        ABSORB_LASTBLOCK(S, K, IN + i * BYTES(STORM_B), l); \
+        ABSORB_LASTBLOCK(S, L, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
 
-#define ENCRYPT_DATA(K, OUT, IN, INLEN)                                                \
+#define ENCRYPT_DATA(L, OUT, IN, INLEN)                                                \
 do                                                                                     \
 {                                                                                      \
     size_t i = 0;                                                                      \
     size_t l = INLEN;                                                                  \
     while (l >= BYTES(STORM_B))                                                        \
     {                                                                                  \
-        ENCRYPT_BLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
+        ENCRYPT_BLOCK(L, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
         i += 1; l -= BYTES(STORM_B);                                                   \
     }                                                                                  \
     if (l > 0)                                                                         \
     {                                                                                  \
-        ENCRYPT_LASTBLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
+        ENCRYPT_LASTBLOCK(L, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
 
-#define DECRYPT_DATA(K, OUT, IN, INLEN) \
+#define DECRYPT_DATA(L, OUT, IN, INLEN) \
 do                                      \
 {                                       \
-    ENCRYPT_DATA(K, OUT, IN, INLEN);    \
+    ENCRYPT_DATA(L, OUT, IN, INLEN);    \
 } while(0)
 
 static void* (* const volatile burn)(void*, int, size_t) = memset;
@@ -318,14 +319,14 @@ void storm_aead_encrypt(
     const unsigned char *key
     )
 {
-    uint64x2_t S[8], K[8];
+    uint64x2_t S[8] = {0};
+    uint64x2_t L[8] = {0};
 
     /* absorb header and message */
-    memset(S, 0,  8 * sizeof(uint64x2_t));
-    INIT(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
-    ABSORB_DATA(S, K, h, hlen);
-    ABSORB_DATA(S, K, m, mlen);
-    ABSORB_FINALISE(S, K, hlen, mlen);
+    INIT_MASK(L, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    ABSORB_DATA(S, L, h, hlen);
+    ABSORB_DATA(S, L, m, mlen);
+    FINALISE(S, L, hlen, mlen);
 
     /* extract tag */
     STOREU(c + mlen, S[0]);
@@ -333,8 +334,8 @@ void storm_aead_encrypt(
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
-    INIT(K, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG);
-    ENCRYPT_DATA(K, c, m, mlen);
+    INIT_MASK(L, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG);
+    ENCRYPT_DATA(L, c, m, mlen);
 }
 
 int storm_aead_decrypt(
@@ -346,22 +347,22 @@ int storm_aead_decrypt(
     )
 {
     int result = -1;
-    uint64x2_t S[8], K[8];
-    uint32x4_t T[2];
+    uint64x2_t S[8] = {0};
+    uint64x2_t L[8] = {0};
+    uint32x4_t T[2] = {0};
 
     if (clen < BYTES(STORM_T)) { return result; }
 
     /* decrypt message */
-    INIT(K, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG);
-    DECRYPT_DATA(K, m, c, clen - BYTES(STORM_T));
+    INIT_MASK(L, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG);
+    DECRYPT_DATA(L, m, c, clen - BYTES(STORM_T));
     *mlen = clen - BYTES(STORM_T);
 
     /* absorb header and message */
-    memset(S, 0,  8 * sizeof(uint64x2_t));
-    INIT(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
-    ABSORB_DATA(S, K, h, hlen);
-    ABSORB_DATA(S, K, m, *mlen);
-    ABSORB_FINALISE(S, K, hlen, *mlen);
+    INIT_MASK(L, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    ABSORB_DATA(S, L, h, hlen);
+    ABSORB_DATA(S, L, m, *mlen);
+    FINALISE(S, L, hlen, *mlen);
 
     /* verify tag */
     T[0] = vceqq_u32( U64TOU32(S[0]), U8TOU32(vld1q_u8((uint8_t *)(c + clen - BYTES(STORM_T)  ))) );

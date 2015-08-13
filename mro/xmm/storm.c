@@ -38,6 +38,7 @@
 #define XOR(A, B) _mm_xor_si128((A), (B))
 #define AND(A, B) _mm_and_si128((A), (B))
 #define ADD(A, B) _mm_add_epi64((A), (B))
+#define ZERO _mm_setzero_si128()
 
 #define R0 32
 #define R1 24
@@ -188,164 +189,164 @@ do                                      \
     BLOCK[BLOCKLEN - 1] |= 0x80;        \
 } while(0)
 
-#define INIT(K, KEY, IV, IVLEN, TAG)               \
+#define INIT_MASK(L, KEY, IV, IVLEN, TAG)          \
 do                                                 \
 {                                                  \
     size_t i;                                      \
-    K[0] = _mm_set_epi64x(0,0);                    \
-    K[1] = _mm_set_epi64x(0,0);                    \
+    L[0] = ZERO;                                   \
+    L[1] = ZERO;                                   \
     for (i = 0; i < IVLEN; ++i)                    \
     {                                              \
-        K[i] = LOADU(IV + i * 2 * BYTES(STORM_W)); \
+        L[i] = LOADU(IV + i * 2 * BYTES(STORM_W)); \
     }                                              \
-    K[2] = LOADU(KEY +  0);                        \
-    K[3] = LOADU(KEY + 16);                        \
-    K[4] = _mm_set_epi64x(0,0);                    \
-    K[5] = _mm_set_epi64x(0,0);                    \
-    K[6] = _mm_set_epi64x(STORM_R, STORM_W);       \
-    K[7] = _mm_set_epi64x(TAG, STORM_T);           \
-    PERMUTE(K);                                    \
+    L[2] = LOADU(KEY +  0);                        \
+    L[3] = LOADU(KEY + 16);                        \
+    L[4] = ZERO;                                   \
+    L[5] = ZERO;                                   \
+    L[6] = _mm_set_epi64x(STORM_R, STORM_W);       \
+    L[7] = _mm_set_epi64x(TAG, STORM_T);           \
+    PERMUTE(L);                                    \
 } while(0)
 
-#define UPDATE(K)                                                                                         \
-do                                                                                                        \
-{                                                                                                         \
-    __m128i T = XOR(ROT(_mm_set_epi64x(0, K[0][0]), 11), _mm_slli_epi64(_mm_set_epi64x(0, K[2][1]), 13)); \
-    K[0] = _mm_set_epi64x(K[1][0], K[0][1]);                                                              \
-    K[1] = _mm_set_epi64x(K[2][0], K[1][1]);                                                              \
-    K[2] = _mm_set_epi64x(K[3][0], K[2][1]);                                                              \
-    K[3] = _mm_set_epi64x(K[4][0], K[3][1]);                                                              \
-    K[4] = _mm_set_epi64x(K[5][0], K[4][1]);                                                              \
-    K[5] = _mm_set_epi64x(K[6][0], K[5][1]);                                                              \
-    K[6] = _mm_set_epi64x(K[7][0], K[6][1]);                                                              \
-    K[7] = _mm_set_epi64x(T[0],    K[7][1]);                                                              \
+#define UPDATE_MASK(L)                                                              \
+do                                                                                  \
+{                                                                                   \
+    __m128i T = XOR(ROT(L[0], 11), _mm_slli_epi64(_mm_set_epi64x(0, L[2][1]), 13)); \
+    L[0] = _mm_set_epi64x(L[1][0], L[0][1]);                                        \
+    L[1] = _mm_set_epi64x(L[2][0], L[1][1]);                                        \
+    L[2] = _mm_set_epi64x(L[3][0], L[2][1]);                                        \
+    L[3] = _mm_set_epi64x(L[4][0], L[3][1]);                                        \
+    L[4] = _mm_set_epi64x(L[5][0], L[4][1]);                                        \
+    L[5] = _mm_set_epi64x(L[6][0], L[5][1]);                                        \
+    L[6] = _mm_set_epi64x(L[7][0], L[6][1]);                                        \
+    L[7] = _mm_set_epi64x(T[0],    L[7][1]);                                        \
 } while(0)
 
-#define ABSORB_BLOCK(S, K, IN)         \
+#define ABSORB_BLOCK(S, L, IN)         \
 do                                     \
 {                                      \
     __m128i B[8];                      \
-    B[0] = XOR(K[0], LOADU(IN +   0)); \
-    B[1] = XOR(K[1], LOADU(IN +  16)); \
-    B[2] = XOR(K[2], LOADU(IN +  32)); \
-    B[3] = XOR(K[3], LOADU(IN +  48)); \
-    B[4] = XOR(K[4], LOADU(IN +  64)); \
-    B[5] = XOR(K[5], LOADU(IN +  80)); \
-    B[6] = XOR(K[6], LOADU(IN +  96)); \
-    B[7] = XOR(K[7], LOADU(IN + 112)); \
+    B[0] = XOR(L[0], LOADU(IN +   0)); \
+    B[1] = XOR(L[1], LOADU(IN +  16)); \
+    B[2] = XOR(L[2], LOADU(IN +  32)); \
+    B[3] = XOR(L[3], LOADU(IN +  48)); \
+    B[4] = XOR(L[4], LOADU(IN +  64)); \
+    B[5] = XOR(L[5], LOADU(IN +  80)); \
+    B[6] = XOR(L[6], LOADU(IN +  96)); \
+    B[7] = XOR(L[7], LOADU(IN + 112)); \
     PERMUTE(B);                        \
-    S[0] = XOR(S[0], XOR(K[0], B[0])); \
-    S[1] = XOR(S[1], XOR(K[1], B[1])); \
-    S[2] = XOR(S[2], XOR(K[2], B[2])); \
-    S[3] = XOR(S[3], XOR(K[3], B[3])); \
-    S[4] = XOR(S[4], XOR(K[4], B[4])); \
-    S[5] = XOR(S[5], XOR(K[5], B[5])); \
-    S[6] = XOR(S[6], XOR(K[6], B[6])); \
-    S[7] = XOR(S[7], XOR(K[7], B[7])); \
-    UPDATE(K);                         \
+    S[0] = XOR(S[0], XOR(L[0], B[0])); \
+    S[1] = XOR(S[1], XOR(L[1], B[1])); \
+    S[2] = XOR(S[2], XOR(L[2], B[2])); \
+    S[3] = XOR(S[3], XOR(L[3], B[3])); \
+    S[4] = XOR(S[4], XOR(L[4], B[4])); \
+    S[5] = XOR(S[5], XOR(L[5], B[5])); \
+    S[6] = XOR(S[6], XOR(L[6], B[6])); \
+    S[7] = XOR(S[7], XOR(L[7], B[7])); \
+    UPDATE_MASK(L);                    \
 } while(0)
 
-#define ABSORB_LASTBLOCK(S, K, IN, INLEN)          \
+#define ABSORB_LASTBLOCK(S, L, IN, INLEN)          \
 do                                                 \
 {                                                  \
     ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)]; \
     PAD(BLOCK, sizeof BLOCK, IN, INLEN);           \
-    ABSORB_BLOCK(S, K, BLOCK);                     \
+    ABSORB_BLOCK(S, L, BLOCK);                     \
 } while(0)
 
-#define ABSORB_FINALISE(S, K, HLEN, MLEN)           \
-do                                                  \
-{                                                   \
-    __m128i B[8];                                   \
-    B[0] = K[0];                                    \
-    B[1] = K[1];                                    \
-    B[2] = K[2];                                    \
-    B[3] = K[3];                                    \
-    B[4] = K[4];                                    \
-    B[5] = K[5];                                    \
-    B[6] = K[6];                                    \
-    B[7] = XOR(K[7], _mm_set_epi64x(MLEN, HLEN));   \
-    PERMUTE(B);                                     \
-    S[0] = XOR(S[0], XOR(K[0], B[0]));              \
-    S[1] = XOR(S[1], XOR(K[1], B[1]));              \
-    S[2] = XOR(S[2], XOR(K[2], B[2]));              \
-    S[3] = XOR(S[3], XOR(K[3], B[3]));              \
-    S[4] = XOR(S[4], XOR(K[4], B[4]));              \
-    S[5] = XOR(S[5], XOR(K[5], B[5]));              \
-    S[6] = XOR(S[6], XOR(K[6], B[6]));              \
-    S[7] = XOR(S[7], XOR(K[7], B[7]));              \
-    UPDATE(K);                                      \
+#define FINALISE(S, L, HLEN, MLEN)                \
+do                                                \
+{                                                 \
+    __m128i B[8];                                 \
+    B[0] = L[0];                                  \
+    B[1] = L[1];                                  \
+    B[2] = L[2];                                  \
+    B[3] = L[3];                                  \
+    B[4] = L[4];                                  \
+    B[5] = L[5];                                  \
+    B[6] = L[6];                                  \
+    B[7] = XOR(L[7], _mm_set_epi64x(MLEN, HLEN)); \
+    PERMUTE(B);                                   \
+    S[0] = XOR(S[0], XOR(L[0], B[0]));            \
+    S[1] = XOR(S[1], XOR(L[1], B[1]));            \
+    S[2] = XOR(S[2], XOR(L[2], B[2]));            \
+    S[3] = XOR(S[3], XOR(L[3], B[3]));            \
+    S[4] = XOR(S[4], XOR(L[4], B[4]));            \
+    S[5] = XOR(S[5], XOR(L[5], B[5]));            \
+    S[6] = XOR(S[6], XOR(L[6], B[6]));            \
+    S[7] = XOR(S[7], XOR(L[7], B[7]));            \
+    UPDATE_MASK(L);                               \
 } while(0)
 
-#define ENCRYPT_BLOCK(K, BLOCK_NR, OUT, IN)                  \
+#define ENCRYPT_BLOCK(L, BLOCK_NR, OUT, IN)                  \
 do                                                           \
 {                                                            \
     __m128i B[8];                                            \
-    B[0] = K[0];                                             \
-    B[1] = K[1];                                             \
-    B[2] = K[2];                                             \
-    B[3] = K[3];                                             \
-    B[4] = K[4];                                             \
-    B[5] = K[5];                                             \
-    B[6] = K[6];                                             \
-    B[7] = XOR(K[7], _mm_set_epi64x(BLOCK_NR, 0));           \
+    B[0] = L[0];                                             \
+    B[1] = L[1];                                             \
+    B[2] = L[2];                                             \
+    B[3] = L[3];                                             \
+    B[4] = L[4];                                             \
+    B[5] = L[5];                                             \
+    B[6] = L[6];                                             \
+    B[7] = XOR(L[7], _mm_set_epi64x(BLOCK_NR, 0));           \
     PERMUTE(B);                                              \
-    STORE(OUT +   0, XOR(B[0], XOR(K[0], LOADU(IN +   0)))); \
-    STORE(OUT +  16, XOR(B[1], XOR(K[1], LOADU(IN +  16)))); \
-    STORE(OUT +  32, XOR(B[2], XOR(K[2], LOADU(IN +  32)))); \
-    STORE(OUT +  48, XOR(B[3], XOR(K[3], LOADU(IN +  48)))); \
-    STORE(OUT +  64, XOR(B[4], XOR(K[4], LOADU(IN +  64)))); \
-    STORE(OUT +  80, XOR(B[5], XOR(K[5], LOADU(IN +  80)))); \
-    STORE(OUT +  96, XOR(B[6], XOR(K[6], LOADU(IN +  96)))); \
-    STORE(OUT + 112, XOR(B[7], XOR(K[7], LOADU(IN + 112)))); \
+    STORE(OUT +   0, XOR(B[0], XOR(L[0], LOADU(IN +   0)))); \
+    STORE(OUT +  16, XOR(B[1], XOR(L[1], LOADU(IN +  16)))); \
+    STORE(OUT +  32, XOR(B[2], XOR(L[2], LOADU(IN +  32)))); \
+    STORE(OUT +  48, XOR(B[3], XOR(L[3], LOADU(IN +  48)))); \
+    STORE(OUT +  64, XOR(B[4], XOR(L[4], LOADU(IN +  64)))); \
+    STORE(OUT +  80, XOR(B[5], XOR(L[5], LOADU(IN +  80)))); \
+    STORE(OUT +  96, XOR(B[6], XOR(L[6], LOADU(IN +  96)))); \
+    STORE(OUT + 112, XOR(B[7], XOR(L[7], LOADU(IN + 112)))); \
 } while(0)
 
-#define ENCRYPT_LASTBLOCK(K, BLOCK_NR, OUT, IN, INLEN) \
+#define ENCRYPT_LASTBLOCK(L, BLOCK_NR, OUT, IN, INLEN) \
 do                                                     \
 {                                                      \
     ALIGN(64) unsigned char BLOCK[BYTES(STORM_B)];     \
     memset(BLOCK, 0, BYTES(STORM_B));                  \
     memcpy(BLOCK, IN, INLEN);                          \
-    ENCRYPT_BLOCK(K, BLOCK_NR, BLOCK, BLOCK);          \
+    ENCRYPT_BLOCK(L, BLOCK_NR, BLOCK, BLOCK);          \
     memcpy(OUT, BLOCK, INLEN);                         \
 } while(0)
 
-#define ABSORB_DATA(S, K, IN, INLEN)                        \
+#define ABSORB_DATA(S, L, IN, INLEN)                        \
 do                                                          \
 {                                                           \
     size_t i = 0;                                           \
     size_t l = INLEN;                                       \
     while(l >= BYTES(STORM_B))                              \
     {                                                       \
-        ABSORB_BLOCK(S, K, IN + i * BYTES(STORM_B));        \
+        ABSORB_BLOCK(S, L, IN + i * BYTES(STORM_B));        \
         i += 1; l -= BYTES(STORM_B);                        \
     }                                                       \
     if(l > 0)                                               \
     {                                                       \
-        ABSORB_LASTBLOCK(S, K, IN + i * BYTES(STORM_B), l); \
+        ABSORB_LASTBLOCK(S, L, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
 
-#define ENCRYPT_DATA(K, OUT, IN, INLEN)                                                \
+#define ENCRYPT_DATA(L, OUT, IN, INLEN)                                                \
 do                                                                                     \
 {                                                                                      \
     size_t i = 0;                                                                      \
     size_t l = INLEN;                                                                  \
     while(l >= BYTES(STORM_B))                                                         \
     {                                                                                  \
-        ENCRYPT_BLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
+        ENCRYPT_BLOCK(L, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
         i += 1; l -= BYTES(STORM_B);                                                   \
     }                                                                                  \
     if(l > 0)                                                                          \
     {                                                                                  \
-        ENCRYPT_LASTBLOCK(K, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
+        ENCRYPT_LASTBLOCK(L, i, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
 
-#define DECRYPT_DATA(K, OUT, IN, INLEN) \
+#define DECRYPT_DATA(L, OUT, IN, INLEN) \
 do                                      \
 {                                       \
-    ENCRYPT_DATA(K, OUT, IN, INLEN);    \
+    ENCRYPT_DATA(L, OUT, IN, INLEN);    \
 } while(0)
 
 typedef enum tag__
@@ -364,14 +365,14 @@ void storm_aead_encrypt(
     const unsigned char *key
     )
 {
-    __m128i S[8], K[8];
+    __m128i S[8] = {0};
+    __m128i L[8] = {0};
 
     /* absorb header and message */
-    memset(S, 0,  8 * sizeof(__m128i));
-    INIT(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* K_a */
-    ABSORB_DATA(S, K, h, hlen);
-    ABSORB_DATA(S, K, m, mlen);
-    ABSORB_FINALISE(S, K, hlen, mlen);
+    INIT_MASK(L, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    ABSORB_DATA(S, L, h, hlen);
+    ABSORB_DATA(S, L, m, mlen);
+    FINALISE(S, L, hlen, mlen);
 
     /* extract tag */
     STOREU(c + mlen, S[0]);
@@ -379,8 +380,8 @@ void storm_aead_encrypt(
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
-    INIT(K, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG); /* K_e */
-    ENCRYPT_DATA(K, c, m, mlen);
+    INIT_MASK(L, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG);
+    ENCRYPT_DATA(L, c, m, mlen);
 }
 
 
@@ -393,22 +394,22 @@ int storm_aead_decrypt(
     )
 {
     int result = -1;
-    __m128i S[8], K[8];
-    __m128i T[2];
+    __m128i S[8] = {0};
+    __m128i L[8] = {0};
+    __m128i T[2] = {0};
 
     if (clen < BYTES(STORM_T)) { return result; }
 
     /* decrypt message */
-    INIT(K, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG); /* K_e */
-    DECRYPT_DATA(K, m, c, clen - BYTES(STORM_T));
+    INIT_MASK(L, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG);
+    DECRYPT_DATA(L, m, c, clen - BYTES(STORM_T));
     *mlen = clen - BYTES(STORM_T);
 
     /* absorb header and message */
-    memset(S, 0,  8 * sizeof(__m128i));
-    INIT(K, key, nonce, WORDS(STORM_N)/2, ABS_TAG); /* K_a */
-    ABSORB_DATA(S, K, h, hlen);
-    ABSORB_DATA(S, K, m, *mlen);
-    ABSORB_FINALISE(S, K, hlen, *mlen);
+    INIT_MASK(L, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    ABSORB_DATA(S, L, h, hlen);
+    ABSORB_DATA(S, L, m, *mlen);
+    FINALISE(S, L, hlen, *mlen);
 
     /* verify tag */
     T[0] = _mm_cmpeq_epi8(S[0], LOADU(c + clen - BYTES(STORM_T)  ));
