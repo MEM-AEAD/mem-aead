@@ -11,10 +11,12 @@
    this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
 #include "storm.h"
-#include "storm_config.h"
 #include <string.h>
 #include <arm_neon.h>
 
+#define STORM_W 64             /* word size */
+#define STORM_R 4              /* round number */
+#define STORM_T (STORM_W *  4) /* tag size */
 #define STORM_N (STORM_W *  2) /* nonce size */
 #define STORM_K (STORM_W *  4) /* key size */
 #define STORM_B (STORM_W * 16) /* permutation width */

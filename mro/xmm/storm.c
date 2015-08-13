@@ -19,9 +19,12 @@
     #include <x86intrin.h>
 #endif
 
-#define STORM_N (STORM_W *  2)   /* nonce size */
-#define STORM_K (STORM_W *  4)   /* key size */
-#define STORM_B (STORM_W * 16)   /* permutation width */
+#define STORM_W 64             /* word size */
+#define STORM_R 4              /* round number */
+#define STORM_T (STORM_W *  4) /* tag size */
+#define STORM_N (STORM_W *  2) /* nonce size */
+#define STORM_K (STORM_W *  4) /* key size */
+#define STORM_B (STORM_W * 16) /* permutation width */
 
 #define BYTES(x) (((x) + 7) / 8)
 #define WORDS(x) (((x) + (STORM_W-1)) / STORM_W)

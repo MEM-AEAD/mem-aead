@@ -191,7 +191,7 @@ static STORM_INLINE void storm_init_mask(storm_state_t mask, const unsigned char
     storm_permute(mask, STORM_R);
 
 #if defined(STORM_DEBUG)
-    printf("SETUP MASK (%02X): \n", tag);
+    printf("SETUP MASK (%02X):\n", tag);
     print_state(mask);
 #endif
 
