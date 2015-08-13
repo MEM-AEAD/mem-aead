@@ -11,10 +11,12 @@
    this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
 #include "storm.h"
-#include "storm_config.h"
 #include <string.h>
 #include <arm_neon.h>
 
+#define STORM_W 64               /* word size */
+#define STORM_R 4                /* round number */
+#define STORM_T (STORM_W *  4)   /* tag size */
 #define STORM_N (STORM_W *  2)   /* nonce size */
 #define STORM_K (STORM_W *  4)   /* key size */
 #define STORM_B (STORM_W * 16)   /* permutation width */
@@ -44,9 +46,9 @@
 #define LOADU(IN) LOAD(IN)
 #define STOREU(OUT, IN) STORE(OUT, IN)
 
-#define LOU64(X) vget_low_u64((X))
-#define HIU64(X) vget_high_u64((X))
-#define COMBU64(X, Y) vcombine_u64((X), (Y))
+#define LO(X) vget_low_u64((X))
+#define HI(X) vget_high_u64((X))
+#define COMB(X, Y) vcombine_u64((X), (Y))
 
 #define XOR(X, Y) veorq_u64((X), (Y))
 #define ADD(X, Y) vaddq_u64((X), (Y))
@@ -75,44 +77,44 @@ do                                                     \
     S[2] = ROT(S[2],   R3);    S[3] = ROT(S[3],   R3); \
 } while(0)
 
-#define DIAGONALIZE(S)                        \
-do                                            \
-{                                             \
-    uint64x2_t T0, T1;                        \
-                                              \
-    T0 = COMBU64( HIU64(S[2]), LOU64(S[3]) ); \
-    T1 = COMBU64( HIU64(S[3]), LOU64(S[2]) ); \
-    S[2] = T0;                                \
-    S[3] = T1;                                \
-                                              \
-    T0 = S[4];                                \
-    S[4] = S[5];                              \
-    S[5] = T0;                                \
-                                              \
-    T0 = COMBU64( HIU64(S[6]), LOU64(S[7]) ); \
-    T1 = COMBU64( HIU64(S[7]), LOU64(S[6]) ); \
-    S[6] = T1;                                \
-    S[7] = T0;                                \
+#define DIAGONALIZE(S)               \
+do                                   \
+{                                    \
+    uint64x2_t T0, T1;               \
+                                     \
+    T0 = COMB( HI(S[2]), LO(S[3]) ); \
+    T1 = COMB( HI(S[3]), LO(S[2]) ); \
+    S[2] = T0;                       \
+    S[3] = T1;                       \
+                                     \
+    T0 = S[4];                       \
+    S[4] = S[5];                     \
+    S[5] = T0;                       \
+                                     \
+    T0 = COMB( HI(S[6]), LO(S[7]) ); \
+    T1 = COMB( HI(S[7]), LO(S[6]) ); \
+    S[6] = T1;                       \
+    S[7] = T0;                       \
 } while(0)
 
-#define UNDIAGONALIZE(S)                      \
-do                                            \
-{                                             \
-    uint64x2_t T0, T1;                        \
-                                              \
-    T0 = COMBU64( HIU64(S[3]), LOU64(S[2]) ); \
-    T1 = COMBU64( HIU64(S[2]), LOU64(S[3]) ); \
-    S[2] = T0;                                \
-    S[3] = T1;                                \
-                                              \
-    T0 = S[4];                                \
-    S[4] = S[5];                              \
-    S[5] = T0;                                \
-                                              \
-    T0 = COMBU64( HIU64(S[7]), LOU64(S[6]) ); \
-    T1 = COMBU64( HIU64(S[6]), LOU64(S[7]) ); \
-    S[6] = T1;                                \
-    S[7] = T0;                                \
+#define UNDIAGONALIZE(S)             \
+do                                   \
+{                                    \
+    uint64x2_t T0, T1;               \
+                                     \
+    T0 = COMB( HI(S[3]), LO(S[2]) ); \
+    T1 = COMB( HI(S[2]), LO(S[3]) ); \
+    S[2] = T0;                       \
+    S[3] = T1;                       \
+                                     \
+    T0 = S[4];                       \
+    S[4] = S[5];                     \
+    S[5] = T0;                       \
+                                     \
+    T0 = COMB( HI(S[7]), LO(S[6]) ); \
+    T1 = COMB( HI(S[6]), LO(S[7]) ); \
+    S[6] = T1;                       \
+    S[7] = T0;                       \
 } while(0)
 
 #define F(S)          \
@@ -214,18 +216,18 @@ do                                                            \
     memcpy(OUT, BLOCK, INLEN);                                \
 } while(0)
 
-#define INIT(S, KEY, IV, IVLEN, TAG)                            \
-do {                                                            \
-    size_t j;                                                   \
-    memset(S, 0, 8 * sizeof(uint64x2_t));                       \
-    for (j = 0; j < IVLEN; ++j)                                 \
-    {                                                           \
-        S[j] = LOADU(IV + j * 2 * BYTES(STORM_W));              \
-    }                                                           \
-    S[4] = COMBU64(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
-    S[5] = COMBU64(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
-    S[6] = LOADU(KEY + 0 * 2 * BYTES(STORM_W));                 \
-    S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));                 \
+#define INIT(S, KEY, IV, IVLEN, TAG)                         \
+do {                                                         \
+    size_t j;                                                \
+    memset(S, 0, 8 * sizeof(uint64x2_t));                    \
+    for (j = 0; j < IVLEN; ++j)                              \
+    {                                                        \
+        S[j] = LOADU(IV + j * 2 * BYTES(STORM_W));           \
+    }                                                        \
+    S[4] = COMB(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
+    S[5] = COMB(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
+    S[6] = LOADU(KEY + 0 * 2 * BYTES(STORM_W));              \
+    S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));              \
 } while(0)
 
 #define ABSORB_DATA(S, IN, INLEN)                     \
@@ -276,12 +278,12 @@ do                                                \
     }                                             \
 } while(0)
 
-#define FINALISE(S, HLEN, MLEN)                                      \
-do                                                                   \
-{                                                                    \
-    PERMUTE(S);                                                      \
-    S[0] = XOR(S[0], COMBU64(vcreate_u64(HLEN), vcreate_u64(MLEN))); \
-    PERMUTE(S);                                                      \
+#define FINALISE(S, HLEN, MLEN)                                   \
+do                                                                \
+{                                                                 \
+    PERMUTE(S);                                                   \
+    S[0] = XOR(S[0], COMB(vcreate_u64(HLEN), vcreate_u64(MLEN))); \
+    PERMUTE(S);                                                   \
 } while(0)
 
 static void* (* const volatile burn)(void*, int, size_t) = memset;

@@ -44,9 +44,9 @@
 #define LOADU(IN) LOAD(IN)
 #define STOREU(OUT, IN) STORE(OUT, IN)
 
-#define LOU64(X) vget_low_u64((X))
-#define HIU64(X) vget_high_u64((X))
-#define COMBU64(X, Y) vcombine_u64((X), (Y))
+#define LO(X) vget_low_u64((X))
+#define HI(X) vget_high_u64((X))
+#define COMB(X, Y) vcombine_u64((X), (Y))
 
 #define XOR(X, Y) veorq_u64((X), (Y))
 #define ADD(X, Y) vaddq_u64((X), (Y))
@@ -76,44 +76,44 @@ do                                                     \
     S[2] = ROT(S[2],   R3);    S[3] = ROT(S[3],   R3); \
 } while(0)
 
-#define DIAGONALIZE(S)                        \
-do                                            \
-{                                             \
-    uint64x2_t T0, T1;                        \
-                                              \
-    T0 = COMBU64( HIU64(S[2]), LOU64(S[3]) ); \
-    T1 = COMBU64( HIU64(S[3]), LOU64(S[2]) ); \
-    S[2] = T0;                                \
-    S[3] = T1;                                \
-                                              \
-    T0 = S[4];                                \
-    S[4] = S[5];                              \
-    S[5] = T0;                                \
-                                              \
-    T0 = COMBU64( HIU64(S[6]), LOU64(S[7]) ); \
-    T1 = COMBU64( HIU64(S[7]), LOU64(S[6]) ); \
-    S[6] = T1;                                \
-    S[7] = T0;                                \
+#define DIAGONALIZE(S)               \
+do                                   \
+{                                    \
+    uint64x2_t T0, T1;               \
+                                     \
+    T0 = COMB( HI(S[2]), LO(S[3]) ); \
+    T1 = COMB( HI(S[3]), LO(S[2]) ); \
+    S[2] = T0;                       \
+    S[3] = T1;                       \
+                                     \
+    T0 = S[4];                       \
+    S[4] = S[5];                     \
+    S[5] = T0;                       \
+                                     \
+    T0 = COMB( HI(S[6]), LO(S[7]) ); \
+    T1 = COMB( HI(S[7]), LO(S[6]) ); \
+    S[6] = T1;                       \
+    S[7] = T0;                       \
 } while(0)
 
-#define UNDIAGONALIZE(S)                      \
-do                                            \
-{                                             \
-    uint64x2_t T0, T1;                        \
-                                              \
-    T0 = COMBU64( HIU64(S[3]), LOU64(S[2]) ); \
-    T1 = COMBU64( HIU64(S[2]), LOU64(S[3]) ); \
-    S[2] = T0;                                \
-    S[3] = T1;                                \
-                                              \
-    T0 = S[4];                                \
-    S[4] = S[5];                              \
-    S[5] = T0;                                \
-                                              \
-    T0 = COMBU64( HIU64(S[7]), LOU64(S[6]) ); \
-    T1 = COMBU64( HIU64(S[6]), LOU64(S[7]) ); \
-    S[6] = T1;                                \
-    S[7] = T0;                                \
+#define UNDIAGONALIZE(S)             \
+do                                   \
+{                                    \
+    uint64x2_t T0, T1;               \
+                                     \
+    T0 = COMB( HI(S[3]), LO(S[2]) ); \
+    T1 = COMB( HI(S[2]), LO(S[3]) ); \
+    S[2] = T0;                       \
+    S[3] = T1;                       \
+                                     \
+    T0 = S[4];                       \
+    S[4] = S[5];                     \
+    S[5] = T0;                       \
+                                     \
+    T0 = COMB( HI(S[7]), LO(S[6]) ); \
+    T1 = COMB( HI(S[6]), LO(S[7]) ); \
+    S[6] = T1;                       \
+    S[7] = T0;                       \
 } while(0)
 
 #define F(S)          \
@@ -144,36 +144,36 @@ do                                  \
     OUT[OUTLEN - 1] |= 0x80;        \
 } while(0)
 
-#define INIT_MASK(L, KEY, IV, IVLEN, TAG)                       \
-do {                                                            \
-    size_t i;                                                   \
-    L[0] = ZERO;                                                \
-    L[1] = ZERO;                                                \
-    for (i = 0; i < IVLEN; ++i)                                 \
-    {                                                           \
-        L[i] = LOADU(IV + i * 2 * BYTES(STORM_W));              \
-    }                                                           \
-    L[2] = LOADU(KEY +  0);                                     \
-    L[3] = LOADU(KEY + 16);                                     \
-    L[4] = ZERO;                                                \
-    L[5] = ZERO;                                                \
-    L[6] = COMBU64(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
-    L[7] = COMBU64(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
-    PERMUTE(L);                                                 \
+#define INIT_MASK(L, KEY, IV, IVLEN, TAG)                    \
+do {                                                         \
+    size_t i;                                                \
+    L[0] = ZERO;                                             \
+    L[1] = ZERO;                                             \
+    for (i = 0; i < IVLEN; ++i)                              \
+    {                                                        \
+        L[i] = LOADU(IV + i * 2 * BYTES(STORM_W));           \
+    }                                                        \
+    L[2] = LOADU(KEY +  0);                                  \
+    L[3] = LOADU(KEY + 16);                                  \
+    L[4] = ZERO;                                             \
+    L[5] = ZERO;                                             \
+    L[6] = COMB(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
+    L[7] = COMB(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
+    PERMUTE(L);                                              \
 } while(0)
 
 #define UPDATE_MASK(L)                                                                                                       \
-do                                                                                     \
-{                                                                                      \
-    uint64x2_t T = XOR(ROT(L[0], 11), SHL(COMBU64( HIU64(L[2]), vcreate_u64(0)), 13)); \
-    L[0] = COMBU64(HIU64(L[0]), LOU64(L[1]));                                          \
-    L[1] = COMBU64(HIU64(L[1]), LOU64(L[2]));                                          \
-    L[2] = COMBU64(HIU64(L[2]), LOU64(L[3]));                                          \
-    L[3] = COMBU64(HIU64(L[3]), LOU64(L[4]));                                          \
-    L[4] = COMBU64(HIU64(L[4]), LOU64(L[5]));                                          \
-    L[5] = COMBU64(HIU64(L[5]), LOU64(L[6]));                                          \
-    L[6] = COMBU64(HIU64(L[6]), LOU64(L[7]));                                          \
-    L[7] = COMBU64(HIU64(L[7]), LOU64(T   ));                                          \
+do                                                                               \
+{                                                                                \
+    uint64x2_t T = XOR(ROT(L[0], 11), SHL(COMB( HI(L[2]), vcreate_u64(0)), 13)); \
+    L[0] = COMB(HI(L[0]), LO(L[1]));                                             \
+    L[1] = COMB(HI(L[1]), LO(L[2]));                                             \
+    L[2] = COMB(HI(L[2]), LO(L[3]));                                             \
+    L[3] = COMB(HI(L[3]), LO(L[4]));                                             \
+    L[4] = COMB(HI(L[4]), LO(L[5]));                                             \
+    L[5] = COMB(HI(L[5]), LO(L[6]));                                             \
+    L[6] = COMB(HI(L[6]), LO(L[7]));                                             \
+    L[7] = COMB(HI(L[7]), LO(T   ));                                             \
 } while(0)
 
 #define ABSORB_BLOCK(S, L, IN)         \
@@ -208,51 +208,51 @@ do                                                 \
     ABSORB_BLOCK(S, L, BLOCK);                     \
 } while(0)
 
-#define FINALISE(S, L, HLEN, MLEN)                                   \
-do                                                                   \
-{                                                                    \
-    uint64x2_t B[8];                                                 \
-    B[0] = L[0];                                                     \
-    B[1] = L[1];                                                     \
-    B[2] = L[2];                                                     \
-    B[3] = L[3];                                                     \
-    B[4] = L[4];                                                     \
-    B[5] = L[5];                                                     \
-    B[6] = L[6];                                                     \
-    B[7] = XOR(L[7], COMBU64(vcreate_u64(HLEN), vcreate_u64(MLEN))); \
-    PERMUTE(B);                                                      \
-    S[0] = XOR(S[0], XOR(L[0], B[0]));                               \
-    S[1] = XOR(S[1], XOR(L[1], B[1]));                               \
-    S[2] = XOR(S[2], XOR(L[2], B[2]));                               \
-    S[3] = XOR(S[3], XOR(L[3], B[3]));                               \
-    S[4] = XOR(S[4], XOR(L[4], B[4]));                               \
-    S[5] = XOR(S[5], XOR(L[5], B[5]));                               \
-    S[6] = XOR(S[6], XOR(L[6], B[6]));                               \
-    S[7] = XOR(S[7], XOR(L[7], B[7]));                               \
-    UPDATE_MASK(L);                                                  \
+#define FINALISE(S, L, HLEN, MLEN)                                \
+do                                                                \
+{                                                                 \
+    uint64x2_t B[8];                                              \
+    B[0] = L[0];                                                  \
+    B[1] = L[1];                                                  \
+    B[2] = L[2];                                                  \
+    B[3] = L[3];                                                  \
+    B[4] = L[4];                                                  \
+    B[5] = L[5];                                                  \
+    B[6] = L[6];                                                  \
+    B[7] = XOR(L[7], COMB(vcreate_u64(HLEN), vcreate_u64(MLEN))); \
+    PERMUTE(B);                                                   \
+    S[0] = XOR(S[0], XOR(L[0], B[0]));                            \
+    S[1] = XOR(S[1], XOR(L[1], B[1]));                            \
+    S[2] = XOR(S[2], XOR(L[2], B[2]));                            \
+    S[3] = XOR(S[3], XOR(L[3], B[3]));                            \
+    S[4] = XOR(S[4], XOR(L[4], B[4]));                            \
+    S[5] = XOR(S[5], XOR(L[5], B[5]));                            \
+    S[6] = XOR(S[6], XOR(L[6], B[6]));                            \
+    S[7] = XOR(S[7], XOR(L[7], B[7]));                            \
+    UPDATE_MASK(L);                                               \
 } while(0)
 
-#define ENCRYPT_BLOCK(L, BLOCK_NR, OUT, IN)                           \
-do                                                                    \
-{                                                                     \
-    uint64x2_t B[8];                                                  \
-    B[0] = L[0];                                                      \
-    B[1] = L[1];                                                      \
-    B[2] = L[2];                                                      \
-    B[3] = L[3];                                                      \
-    B[4] = L[4];                                                      \
-    B[5] = L[5];                                                      \
-    B[6] = L[6];                                                      \
-    B[7] = XOR(L[7], COMBU64(vcreate_u64(0), vcreate_u64(BLOCK_NR))); \
-    PERMUTE(B);                                                       \
-    STOREU(OUT +   0, XOR(B[0], XOR(L[0], LOADU(IN +   0))));         \
-    STOREU(OUT +  16, XOR(B[1], XOR(L[1], LOADU(IN +  16))));         \
-    STOREU(OUT +  32, XOR(B[2], XOR(L[2], LOADU(IN +  32))));         \
-    STOREU(OUT +  48, XOR(B[3], XOR(L[3], LOADU(IN +  48))));         \
-    STOREU(OUT +  64, XOR(B[4], XOR(L[4], LOADU(IN +  64))));         \
-    STOREU(OUT +  80, XOR(B[5], XOR(L[5], LOADU(IN +  80))));         \
-    STOREU(OUT +  96, XOR(B[6], XOR(L[6], LOADU(IN +  96))));         \
-    STOREU(OUT + 112, XOR(B[7], XOR(L[7], LOADU(IN + 112))));         \
+#define ENCRYPT_BLOCK(L, BLOCK_NR, OUT, IN)                        \
+do                                                                 \
+{                                                                  \
+    uint64x2_t B[8];                                               \
+    B[0] = L[0];                                                   \
+    B[1] = L[1];                                                   \
+    B[2] = L[2];                                                   \
+    B[3] = L[3];                                                   \
+    B[4] = L[4];                                                   \
+    B[5] = L[5];                                                   \
+    B[6] = L[6];                                                   \
+    B[7] = XOR(L[7], COMB(vcreate_u64(0), vcreate_u64(BLOCK_NR))); \
+    PERMUTE(B);                                                    \
+    STOREU(OUT +   0, XOR(B[0], XOR(L[0], LOADU(IN +   0))));      \
+    STOREU(OUT +  16, XOR(B[1], XOR(L[1], LOADU(IN +  16))));      \
+    STOREU(OUT +  32, XOR(B[2], XOR(L[2], LOADU(IN +  32))));      \
+    STOREU(OUT +  48, XOR(B[3], XOR(L[3], LOADU(IN +  48))));      \
+    STOREU(OUT +  64, XOR(B[4], XOR(L[4], LOADU(IN +  64))));      \
+    STOREU(OUT +  80, XOR(B[5], XOR(L[5], LOADU(IN +  80))));      \
+    STOREU(OUT +  96, XOR(B[6], XOR(L[6], LOADU(IN +  96))));      \
+    STOREU(OUT + 112, XOR(B[7], XOR(L[7], LOADU(IN + 112))));      \
 } while(0)
 
 #define ENCRYPT_LASTBLOCK(L, BLOCK_NR, OUT, IN, INLEN) \

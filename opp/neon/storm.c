@@ -11,10 +11,12 @@
    this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
 #include "storm.h"
-#include "storm_config.h"
 #include <string.h>
 #include <arm_neon.h>
 
+#define STORM_W 64             /* word size */
+#define STORM_R 4              /* round number */
+#define STORM_T (STORM_W *  4) /* tag size */
 #define STORM_N (STORM_W *  2) /* nonce size */
 #define STORM_K (STORM_W *  4) /* key size */
 #define STORM_B (STORM_W * 16) /* permutation width */
@@ -48,9 +50,9 @@
 #define LOADU(IN) LOAD(IN)
 #define STOREU(OUT, IN) STORE(OUT, IN)
 
-#define LOU64(X) vget_low_u64((X))
-#define HIU64(X) vget_high_u64((X))
-#define COMBU64(X, Y) vcombine_u64((X), (Y))
+#define LO(X) vget_low_u64((X))
+#define HI(X) vget_high_u64((X))
+#define COMB(X, Y) vcombine_u64((X), (Y))
 
 #define XOR(X, Y) veorq_u64((X), (Y))
 #define ADD(X, Y) vaddq_u64((X), (Y))
@@ -58,6 +60,7 @@
 #define SHL(X, C) vshlq_n_u64((X), (C))
 #define SHR(X, C) vshrq_n_u64((X), (C))
 #define ROT(X, C) XOR(SHR(X, C), SHL(X, (STORM_W)-(C)))
+#define ZERO vdupq_n_u64(0)
 
 /* quarter round */
 #define G(S)                                           \
@@ -84,7 +87,7 @@ do                                                     \
 #define GI(S)                                          \
 do                                                     \
 {                                                      \
-    S[2] = ROT(S[2],   L3);    S[3] = ROT(S[3],   L3); \
+    S[2] = ROT(S[2],   L3);     S[3] = ROT(S[3],  L3); \
     S[2] = XOR(S[2], S[4]);    S[3] = XOR(S[3], S[5]); \
     S[4] = SUB(S[4], S[6]);    S[5] = SUB(S[5], S[7]); \
                                                        \
@@ -101,44 +104,44 @@ do                                                     \
     S[0] = SUB(S[0], S[2]);    S[1] = SUB(S[1], S[3]); \
 } while(0)
 
-#define DIAGONALIZE(S)                        \
-do                                            \
-{                                             \
-    uint64x2_t T0, T1;                        \
-                                              \
-    T0 = COMBU64( HIU64(S[2]), LOU64(S[3]) ); \
-    T1 = COMBU64( HIU64(S[3]), LOU64(S[2]) ); \
-    S[2] = T0;                                \
-    S[3] = T1;                                \
-                                              \
-    T0 = S[4];                                \
-    S[4] = S[5];                              \
-    S[5] = T0;                                \
-                                              \
-    T0 = COMBU64( HIU64(S[6]), LOU64(S[7]) ); \
-    T1 = COMBU64( HIU64(S[7]), LOU64(S[6]) ); \
-    S[6] = T1;                                \
-    S[7] = T0;                                \
+#define DIAGONALIZE(S)               \
+do                                   \
+{                                    \
+    uint64x2_t T0, T1;               \
+                                     \
+    T0 = COMB( HI(S[2]), LO(S[3]) ); \
+    T1 = COMB( HI(S[3]), LO(S[2]) ); \
+    S[2] = T0;                       \
+    S[3] = T1;                       \
+                                     \
+    T0 = S[4];                       \
+    S[4] = S[5];                     \
+    S[5] = T0;                       \
+                                     \
+    T0 = COMB( HI(S[6]), LO(S[7]) ); \
+    T1 = COMB( HI(S[7]), LO(S[6]) ); \
+    S[6] = T1;                       \
+    S[7] = T0;                       \
 } while(0)
 
-#define UNDIAGONALIZE(S)                      \
-do                                            \
-{                                             \
-    uint64x2_t T0, T1;                        \
-                                              \
-    T0 = COMBU64( HIU64(S[3]), LOU64(S[2]) ); \
-    T1 = COMBU64( HIU64(S[2]), LOU64(S[3]) ); \
-    S[2] = T0;                                \
-    S[3] = T1;                                \
-                                              \
-    T0 = S[4];                                \
-    S[4] = S[5];                              \
-    S[5] = T0;                                \
-                                              \
-    T0 = COMBU64( HIU64(S[7]), LOU64(S[6]) ); \
-    T1 = COMBU64( HIU64(S[6]), LOU64(S[7]) ); \
-    S[6] = T1;                                \
-    S[7] = T0;                                \
+#define UNDIAGONALIZE(S)             \
+do                                   \
+{                                    \
+    uint64x2_t T0, T1;               \
+                                     \
+    T0 = COMB( HI(S[3]), LO(S[2]) ); \
+    T1 = COMB( HI(S[2]), LO(S[3]) ); \
+    S[2] = T0;                       \
+    S[3] = T1;                       \
+                                     \
+    T0 = S[4];                       \
+    S[4] = S[5];                     \
+    S[5] = T0;                       \
+                                     \
+    T0 = COMB( HI(S[7]), LO(S[6]) ); \
+    T1 = COMB( HI(S[6]), LO(S[7]) ); \
+    S[6] = T1;                       \
+    S[7] = T0;                       \
 } while(0)
 
 #define F(S)          \
@@ -188,32 +191,34 @@ do                                  \
     OUT[OUTLEN - 1] |= 0x80;        \
 } while(0)
 
-#define INIT_MASK(L, KEY, NONCE, TAG)                           \
-do                                                              \
-{                                                               \
-    L[0] = LOADU(NONCE + 0);                                    \
-    L[1] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
-    L[2] = LOADU(KEY +  0);                                     \
-    L[3] = LOADU(KEY + 16);                                     \
-    L[4] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
-    L[5] = COMBU64(vcreate_u64(0), vcreate_u64(0));             \
-    L[6] = COMBU64(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
-    L[7] = COMBU64(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
-    PERMUTE(L);                                                 \
+/*
+*/
+#define INIT_MASK(L, KEY, NONCE, TAG)                        \
+do                                                           \
+{                                                            \
+    L[0] = LOADU(NONCE + 0);                                 \
+    L[1] = ZERO;                                             \
+    L[2] = LOADU(KEY +  0);                                  \
+    L[3] = LOADU(KEY + 16);                                  \
+    L[4] = ZERO;                                             \
+    L[5] = ZERO;                                             \
+    L[6] = COMB(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
+    L[7] = COMB(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
+    PERMUTE(L);                                              \
 } while(0)
 
-#define UPDATE_MASK(L)                                                                                                  \
-do                                                                                                                      \
-{                                                                                                                       \
-    uint64x2_t T = XOR(ROT(COMBU64( LOU64(L[0]), vcreate_u64(0)), 11), SHL(COMBU64( HIU64(L[2]), vcreate_u64(0)), 13)); \
-    L[0] = COMBU64( HIU64(L[0]), LOU64(L[1]));                                                                          \
-    L[1] = COMBU64( HIU64(L[1]), LOU64(L[2]));                                                                          \
-    L[2] = COMBU64( HIU64(L[2]), LOU64(L[3]));                                                                          \
-    L[3] = COMBU64( HIU64(L[3]), LOU64(L[4]));                                                                          \
-    L[4] = COMBU64( HIU64(L[4]), LOU64(L[5]));                                                                          \
-    L[5] = COMBU64( HIU64(L[5]), LOU64(L[6]));                                                                          \
-    L[6] = COMBU64( HIU64(L[6]), LOU64(L[7]));                                                                          \
-    L[7] = COMBU64( HIU64(L[7]), LOU64(T   ));                                                                          \
+#define UPDATE_MASK(L)                                                           \
+do                                                                               \
+{                                                                                \
+    uint64x2_t T = XOR(ROT(L[0], 11), SHL(COMB( HI(L[2]), vcreate_u64(0)), 13)); \
+    L[0] = COMB( HI(L[0]), LO(L[1]));                                            \
+    L[1] = COMB( HI(L[1]), LO(L[2]));                                            \
+    L[2] = COMB( HI(L[2]), LO(L[3]));                                            \
+    L[3] = COMB( HI(L[3]), LO(L[4]));                                            \
+    L[4] = COMB( HI(L[4]), LO(L[5]));                                            \
+    L[5] = COMB( HI(L[5]), LO(L[6]));                                            \
+    L[6] = COMB( HI(L[6]), LO(L[7]));                                            \
+    L[7] = COMB( HI(L[7]), LO(T   ));                                            \
 } while(0)
 
 #define ABSORB_BLOCK(S, L, IN)         \
@@ -488,11 +493,12 @@ void storm_aead_encrypt(
     const unsigned char *key
     )
 {
-    uint64x2_t SA[8], SE[8], LA[8], LE[8];
+    uint64x2_t SA[8] = {0};
+    uint64x2_t SE[8] = {0};
+    uint64x2_t LA[8] = {0};
+    uint64x2_t LE[8] = {0};
 
     /* init states and masks */
-    memset(SA, 0,  8 * sizeof(uint64x2_t));
-    memset(SE, 0,  8 * sizeof(uint64x2_t));
     INIT_MASK(LA, key, nonce, ABS_TAG);
     INIT_MASK(LE, key, nonce, ENC_TAG);
 
@@ -520,14 +526,15 @@ int storm_aead_decrypt(
     )
 {
     int result = -1;
-    uint64x2_t SA[8], SE[8], LA[8], LE[8];
-    uint32x4_t T[2];
+    uint64x2_t SA[8] = {0};
+    uint64x2_t SE[8] = {0};
+    uint64x2_t LA[8] = {0};
+    uint64x2_t LE[8] = {0};
+    uint32x4_t T[2] = {0};
 
     if (clen < BYTES(STORM_T)) { return result; }
 
     /* init states and masks */
-    memset(SA, 0,  8 * sizeof(uint64x2_t));
-    memset(SE, 0,  8 * sizeof(uint64x2_t));
     INIT_MASK(LA, key, nonce, ABS_TAG);
     INIT_MASK(LE, key, nonce, ENC_TAG);
 
