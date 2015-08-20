@@ -148,5 +148,6 @@ int storm_aead_decrypt(
         const unsigned char *nonce,
         const unsigned char *key);
 
+/*foo*/
 
 #endif

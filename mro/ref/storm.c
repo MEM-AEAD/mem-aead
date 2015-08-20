@@ -12,7 +12,7 @@
 */
 #include "storm.h"
 
-/* Rotation constants (BLAKE2) */
+/* rotation constants (BLAKE2) */
 #define R0 32
 #define R1 24
 #define R2 16
@@ -33,12 +33,12 @@ do                                               \
 /* double round */
 static STORM_INLINE void F(storm_word_t S[16])
 {
-    /* Column step */
+    /* column step */
     G(S[ 0], S[ 4], S[ 8], S[12]);
     G(S[ 1], S[ 5], S[ 9], S[13]);
     G(S[ 2], S[ 6], S[10], S[14]);
     G(S[ 3], S[ 7], S[11], S[15]);
-    /* Diagonal step */
+    /* diagonal step */
     G(S[ 0], S[ 5], S[10], S[15]);
     G(S[ 1], S[ 6], S[11], S[12]);
     G(S[ 2], S[ 7], S[ 8], S[13]);

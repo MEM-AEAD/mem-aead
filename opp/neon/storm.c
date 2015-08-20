@@ -408,13 +408,14 @@ do                                                          \
     size_t l = INLEN;                                       \
     while (l >= BYTES(STORM_B))                             \
     {                                                       \
+        UPDATE_MASK(L);                                     \
         ABSORB_BLOCK(S, L, IN + i * BYTES(STORM_B));        \
         i += 1;                                             \
         l -= BYTES(STORM_B);                                \
-        UPDATE_MASK(L);                                     \
     }                                                       \
     if (l > 0)                                              \
     {                                                       \
+        UPDATE_MASK(L);                                     \
         ABSORB_LASTBLOCK(S, L, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
@@ -426,13 +427,14 @@ do                                                                              
     size_t l = INLEN;                                                                  \
     while (l >= BYTES(STORM_B))                                                        \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         ENCRYPT_BLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
         i += 1;                                                                        \
         l -= BYTES(STORM_B);                                                           \
-        UPDATE_MASK(L);                                                                \
     }                                                                                  \
     if (l > 0)                                                                         \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         ENCRYPT_LASTBLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
@@ -444,13 +446,14 @@ do                                                                              
     size_t l = INLEN;                                                                  \
     while (l >= BYTES(STORM_B))                                                        \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         DECRYPT_BLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
         i += 1;                                                                        \
         l -= BYTES(STORM_B);                                                           \
-        UPDATE_MASK(L);                                                                \
     }                                                                                  \
     if (l > 0)                                                                         \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         DECRYPT_LASTBLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)

@@ -19,9 +19,12 @@
     #include <x86intrin.h>
 #endif
 
-#define STORM_N (STORM_W *  2)   /* nonce size */
-#define STORM_K (STORM_W *  4)   /* key size */
-#define STORM_B (STORM_W * 16)   /* permutation width */
+#define STORM_W 64             /* word size */
+#define STORM_R 4              /* round number */
+#define STORM_T (STORM_W *  4) /* tag size */
+#define STORM_N (STORM_W *  2) /* nonce size */
+#define STORM_K (STORM_W *  4) /* key size */
+#define STORM_B (STORM_W * 16) /* permutation width */
 
 #define BYTES(x) (((x) + 7) / 8)
 #define WORDS(x) (((x) + (STORM_W-1)) / STORM_W)
@@ -449,13 +452,14 @@ do                                                          \
     size_t l = INLEN;                                       \
     while (l >= BYTES(STORM_B))                             \
     {                                                       \
+        UPDATE_MASK(L);                                     \
         ABSORB_BLOCK(S, L, IN + i * BYTES(STORM_B));        \
         i += 1;                                             \
         l -= BYTES(STORM_B);                                \
-        UPDATE_MASK(L);                                     \
     }                                                       \
     if (l > 0)                                              \
     {                                                       \
+        UPDATE_MASK(L);                                     \
         ABSORB_LASTBLOCK(S, L, IN + i * BYTES(STORM_B), l); \
     }                                                       \
 } while(0)
@@ -467,13 +471,14 @@ do                                                                              
     size_t l = INLEN;                                                                  \
     while (l >= BYTES(STORM_B))                                                        \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         ENCRYPT_BLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
         i += 1;                                                                        \
         l -= BYTES(STORM_B);                                                           \
-        UPDATE_MASK(L);                                                                \
     }                                                                                  \
     if (l > 0)                                                                         \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         ENCRYPT_LASTBLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
@@ -485,13 +490,14 @@ do                                                                              
     size_t l = INLEN;                                                                  \
     while (l >= BYTES(STORM_B))                                                        \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         DECRYPT_BLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B));        \
         i += 1;                                                                        \
         l -= BYTES(STORM_B);                                                           \
-        UPDATE_MASK(L);                                                                \
     }                                                                                  \
     if (l > 0)                                                                         \
     {                                                                                  \
+        UPDATE_MASK(L);                                                                \
         DECRYPT_LASTBLOCK(S, L, OUT + i * BYTES(STORM_B), IN + i * BYTES(STORM_B), l); \
     }                                                                                  \
 } while(0)
@@ -534,11 +540,12 @@ void storm_aead_encrypt(
     const unsigned char *key
     )
 {
-    __m128i SA[8], SE[8], LA[8], LE[8];
+    __m128i SA[8] = {0};
+    __m128i SE[8] = {0};
+    __m128i LA[8] = {0};
+    __m128i LE[8] = {0};
 
     /* init states and masks */
-    memset(SA, 0,  8 * sizeof(__m128i));
-    memset(SE, 0,  8 * sizeof(__m128i));
     INIT_MASK(LA, key, nonce, ABS_TAG);
     INIT_MASK(LE, key, nonce, ENC_TAG);
 
@@ -566,13 +573,15 @@ int storm_aead_decrypt(
     )
 {
     int result = -1;
-    __m128i SA[8], SE[8], LA[8], LE[8], T[2];
+    __m128i SA[8] = {0};
+    __m128i SE[8] = {0};
+    __m128i LA[8] = {0};
+    __m128i LE[8] = {0};
+    __m128i T[2] = {0};
 
     if (clen < BYTES(STORM_T)) { return result; }
 
     /* init states and masks */
-    memset(SA, 0,  8 * sizeof(__m128i));
-    memset(SE, 0,  8 * sizeof(__m128i));
     INIT_MASK(LA, key, nonce, ABS_TAG);
     INIT_MASK(LE, key, nonce, ENC_TAG);
 

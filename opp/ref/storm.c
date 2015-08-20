@@ -10,127 +10,66 @@
    You should have received a copy of the CC0 Public Domain Dedication along with
    this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
 #include "storm.h"
-#include "storm_utils.h"
 
-#if defined(STORM_DEBUG)
-#include <inttypes.h>
-#include <stdio.h>
-#endif
+/* rotation constants (BLAKE2) */
+#define R0 32
+#define R1 24
+#define R2 16
+#define R3 63
 
-#if STORM_W == 64
+#define ROTR(x, c) ( ((x) >> (c)) | ((x) << (BITS(x) - (c))) )
+#define ROTL(x, c) ( ((x) << (c)) | ((x) >> (BITS(x) - (c))) )
 
-    #define LOAD load64
-    #define STORE store64
-    #define STORM_N (STORM_W *  2)   /* nonce size */
-    #define STORM_K (STORM_W *  4)   /* key size */
-    #define STORM_B (STORM_W * 16)   /* permutation width */
+/* quarter round */
+#define G(A, B, C, D)                            \
+do                                               \
+{                                                \
+    (A) += (B); (D) ^= (A); (D) = ROTR((D), R0); \
+    (C) += (D); (B) ^= (C); (B) = ROTR((B), R1); \
+    (A) += (B); (D) ^= (A); (D) = ROTR((D), R2); \
+    (C) += (D); (B) ^= (C); (B) = ROTR((B), R3); \
+} while (0)
 
-    /* Rotation constants (BLAKE2) */
-    #define R0 32
-    #define R1 24
-    #define R2 16
-    #define R3 63
+/* inverse quarter round */
+#define GI(A, B, C, D)                           \
+do                                               \
+{                                                \
+    (B) = ROTL((B), R3); (B) ^= (C); (C) -= (D); \
+    (D) = ROTL((D), R2); (D) ^= (A); (A) -= (B); \
+    (B) = ROTL((B), R1); (B) ^= (C); (C) -= (D); \
+    (D) = ROTL((D), R0); (D) ^= (A); (A) -= (B); \
+} while (0)
 
-    #define ROTR(x, c) ( ((x) >> (c)) | ((x) << (BITS(x) - (c))) )
-    #define ROTL(x, c) ( ((x) << (c)) | ((x) >> (BITS(x) - (c))) )
-
-    /* quarter round */
-    #define G(A, B, C, D)                            \
-    do                                               \
-    {                                                \
-        (A) += (B); (D) ^= (A); (D) = ROTR((D), R0); \
-        (C) += (D); (B) ^= (C); (B) = ROTR((B), R1); \
-        (A) += (B); (D) ^= (A); (D) = ROTR((D), R2); \
-        (C) += (D); (B) ^= (C); (B) = ROTR((B), R3); \
-    } while (0)
-
-    /* inverse quarter round */
-    #define GI(A, B, C, D)                           \
-    do                                               \
-    {                                                \
-        (B) = ROTL((B), R3); (B) ^= (C); (C) -= (D); \
-        (D) = ROTL((D), R2); (D) ^= (A); (A) -= (B); \
-        (B) = ROTL((B), R1); (B) ^= (C); (C) -= (D); \
-        (D) = ROTL((D), R0); (D) ^= (A); (A) -= (B); \
-    } while (0)
-
-    /* double round */
-    static STORM_INLINE void F(storm_word_t S[16])
-    {
-        /* Column step */
-        G(S[ 0], S[ 4], S[ 8], S[12]);
-        G(S[ 1], S[ 5], S[ 9], S[13]);
-        G(S[ 2], S[ 6], S[10], S[14]);
-        G(S[ 3], S[ 7], S[11], S[15]);
-        /* Diagonal step */
-        G(S[ 0], S[ 5], S[10], S[15]);
-        G(S[ 1], S[ 6], S[11], S[12]);
-        G(S[ 2], S[ 7], S[ 8], S[13]);
-        G(S[ 3], S[ 4], S[ 9], S[14]);
-    }
-
-    /* inverse double round */
-    static STORM_INLINE void FI(storm_word_t S[16])
-    {
-        /* Diagonal step */
-        GI(S[ 0], S[ 5], S[10], S[15]);
-        GI(S[ 1], S[ 6], S[11], S[12]);
-        GI(S[ 2], S[ 7], S[ 8], S[13]);
-        GI(S[ 3], S[ 4], S[ 9], S[14]);
-        /* Column step */
-        GI(S[ 0], S[ 4], S[ 8], S[12]);
-        GI(S[ 1], S[ 5], S[ 9], S[13]);
-        GI(S[ 2], S[ 6], S[10], S[14]);
-        GI(S[ 3], S[ 7], S[11], S[15]);
-    }
-
-    #if defined(STORM_DEBUG)
-        #define FMT "016" PRIX64
-    #endif
-
-#else
-    #error "Invalid word size!"
-#endif
-
-#if defined(STORM_DEBUG)
-static void print_state(storm_state_t state)
+/* double round */
+static STORM_INLINE void F(storm_word_t S[16])
 {
-    static const char fmt[] = "%" FMT " "
-                              "%" FMT " "
-                              "%" FMT " "
-                              "%" FMT "\n";
-    const storm_word_t * S = state->S;
-    printf(fmt, S[ 0],S[ 1],S[ 2],S[ 3]);
-    printf(fmt, S[ 4],S[ 5],S[ 6],S[ 7]);
-    printf(fmt, S[ 8],S[ 9],S[10],S[11]);
-    printf(fmt, S[12],S[13],S[14],S[15]);
-    printf("\n");
+    /* column step */
+    G(S[ 0], S[ 4], S[ 8], S[12]);
+    G(S[ 1], S[ 5], S[ 9], S[13]);
+    G(S[ 2], S[ 6], S[10], S[14]);
+    G(S[ 3], S[ 7], S[11], S[15]);
+    /* diagonal step */
+    G(S[ 0], S[ 5], S[10], S[15]);
+    G(S[ 1], S[ 6], S[11], S[12]);
+    G(S[ 2], S[ 7], S[ 8], S[13]);
+    G(S[ 3], S[ 4], S[ 9], S[14]);
 }
 
-static void print_bytes(const uint8_t * in, size_t inlen)
+/* inverse double round */
+static STORM_INLINE void FI(storm_word_t S[16])
 {
-    size_t i;
-    for (i = 0; i < inlen; ++i)
-    {
-        printf("%02X ", in[i]);
-        if (i%16 == 15)
-        {
-            printf("\n");
-        }
-    }
-    printf("\n");
+    /* diagonal step */
+    GI(S[ 0], S[ 5], S[10], S[15]);
+    GI(S[ 1], S[ 6], S[11], S[12]);
+    GI(S[ 2], S[ 7], S[ 8], S[13]);
+    GI(S[ 3], S[ 4], S[ 9], S[14]);
+    /* column step */
+    GI(S[ 0], S[ 4], S[ 8], S[12]);
+    GI(S[ 1], S[ 5], S[ 9], S[13]);
+    GI(S[ 2], S[ 6], S[10], S[14]);
+    GI(S[ 3], S[ 7], S[11], S[15]);
 }
-#endif
-
-typedef enum tag__
-{
-    ABS_TAG     = 0x00,
-    ENC_TAG     = 0x01
-} tag_t;
 
 static STORM_INLINE void storm_permute(storm_state_t state, size_t R)
 {
@@ -456,13 +395,14 @@ void storm_absorb_data(storm_state_t state, storm_state_t mask, const unsigned c
 {
     while (inlen >= BYTES(STORM_B))
     {
+        storm_update_mask(mask);
         storm_absorb_block(state, mask, in);
         inlen -= BYTES(STORM_B);
         in    += BYTES(STORM_B);
-        storm_update_mask(mask); /* update mask for the next block */
     }
     if (inlen > 0)
     {
+        storm_update_mask(mask);
         storm_absorb_lastblock(state, mask, in, inlen);
     }
 }
@@ -471,14 +411,15 @@ void storm_encrypt_data(storm_state_t state, storm_state_t mask, unsigned char *
 {
     while (inlen >= BYTES(STORM_B))
     {
+        storm_update_mask(mask);
         storm_encrypt_block(state, mask, out, in);
         inlen -= BYTES(STORM_B);
         in    += BYTES(STORM_B);
         out   += BYTES(STORM_B);
-        storm_update_mask(mask); /* update mask for the next block */
     }
     if (inlen > 0)
     {
+        storm_update_mask(mask);
         storm_encrypt_lastblock(state, mask, out, in, inlen);
     }
 }
@@ -487,14 +428,15 @@ void storm_decrypt_data(storm_state_t state, storm_state_t mask, unsigned char *
 {
     while (inlen >= BYTES(STORM_B))
     {
+        storm_update_mask(mask);
         storm_decrypt_block(state, mask, out, in);
         inlen -= BYTES(STORM_B);
         in    += BYTES(STORM_B);
         out   += BYTES(STORM_B);
-        storm_update_mask(mask); /* update mask for next block */
     }
     if (inlen > 0)
     {
+        storm_update_mask(mask);
         storm_decrypt_lastblock(state, mask, out, in, inlen);
     }
 }
