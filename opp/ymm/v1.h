@@ -63,13 +63,15 @@
 
 #define V1_MASK_UPDATE(L) do {                       \
   const uint64_t t = ROT64(L[0], 11) ^ (L[5] << 13); \
-  int i;                                             \
-  /* memmove(&L[0], &L[1], 15 * sizeof(L[0]));*/     \
-  for(i = 0; i < 15; ++i) L[i] = L[i+1]; /* BUG? */  \
-  /* STOREU256(&L[ 0], LOADU256(&L[ 1])); */ \
-  /* STOREU256(&L[ 4], LOADU256(&L[ 5])); */ \
-  /* STOREU256(&L[ 8], LOADU256(&L[ 9])); */ \
-  /* STOREU256(&L[12], LOADU256(&L[13])); */ \
+  /* int i;  */                                      \
+  memmove(&L[0], &L[1], 15 * sizeof(L[0]));          \
+  /* This triggers codegen bug on GCC! */            \
+  /* for(i = 0; i < 15; ++i) L[i] = L[i+1]; */       \
+  /* Also acceptable:                     */         \
+  /* STOREU256(&L[ 0], LOADU256(&L[ 1])); */         \
+  /* STOREU256(&L[ 4], LOADU256(&L[ 5])); */         \
+  /* STOREU256(&L[ 8], LOADU256(&L[ 9])); */         \
+  /* STOREU256(&L[12], LOADU256(&L[13])); */         \
   L[15] = t;                                         \
 } while(0)
 

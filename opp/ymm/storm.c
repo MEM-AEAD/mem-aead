@@ -74,13 +74,12 @@ static void storm_hash_data(__m256i T[4], const uint8_t * h, size_t hlen, uint64
 
   while(hlen >= BYTES(STORM_B)) {
     __m256i B[4];
-    V1_MASK_UPDATE_1(L);
+    V1_MASK_UPDATE(L);
 
     V1_LOAD_BLOCK(B, h);
     V1_BLOCKCIPHER_F(B, L);
     V1_ACCUMULATE(T, B);
 
-    V1_MASK_UPDATE_2(L);
     h    += BYTES(STORM_B);
     hlen -= BYTES(STORM_B);
   }
@@ -88,14 +87,11 @@ static void storm_hash_data(__m256i T[4], const uint8_t * h, size_t hlen, uint64
   if(hlen > 0) {
     uint8_t lastblock[BYTES(STORM_B)];
     __m256i B[4];
-
+    V1_MASK_UPDATE(L);
     STORM_PAD(lastblock, h, hlen);
     V1_LOAD_BLOCK(B, lastblock);
     V1_BLOCKCIPHER_ROTATED_F(B, L, 256);
     V1_ACCUMULATE(T, B);
-    /* TODO: doublecheck that this is correct
-             handling of the last block.
-    */
   }
 }
 
@@ -118,14 +114,13 @@ static void storm_encrypt_data(__m256i T[4], uint8_t * c, const uint8_t * m, siz
 
   while(mlen >= BYTES(STORM_B)) {
     __m256i B[4];
-    V1_MASK_UPDATE_1(L);
+    V1_MASK_UPDATE(L);
 
     V1_LOAD_BLOCK(B, m);
     V1_ACCUMULATE(T, B);
     V1_BLOCKCIPHER_F(B, L);
     V1_STORE_BLOCK(c, B);
 
-    V1_MASK_UPDATE_2(L);
     c    += BYTES(STORM_B);
     m    += BYTES(STORM_B);
     mlen -= BYTES(STORM_B);
@@ -135,10 +130,9 @@ static void storm_encrypt_data(__m256i T[4], uint8_t * c, const uint8_t * m, siz
     uint8_t lastblock[BYTES(STORM_B)];
     __m256i B[4];
     int i;
-
+    V1_MASK_UPDATE(L);
     STORM_PAD(lastblock, m, mlen);
-    V1_ZERO_BLOCK(B); /* encrypt zero, ala OCB */
-    /* V1_BLOCKCIPHER_F(B, L); */
+    V1_ZERO_BLOCK(B); 
     V1_BLOCKCIPHER_ROTATED_F(B, L, 768);
     for(i = 0; i < 4; ++i) { /* lastblock xor B and T xor last block */
       const __m256i M_i = LOADU256(&lastblock[32 * i]);
@@ -146,9 +140,6 @@ static void storm_encrypt_data(__m256i T[4], uint8_t * c, const uint8_t * m, siz
       STOREU256(&lastblock[32 * i], XOR256(B[i], M_i));
     }
     memcpy(c, lastblock, mlen);
-    /* TODO: doublecheck that this is correct
-             handling of the last block.
-    */
   }
 }
 
@@ -170,14 +161,13 @@ static void storm_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, siz
 
   while(clen >= BYTES(STORM_B)) {
     __m256i B[4];
-    V1_MASK_UPDATE_1(L);
+    V1_MASK_UPDATE(L);
 
     V1_LOAD_BLOCK(B, c);
     V1_BLOCKCIPHER_B(B, L);
     V1_ACCUMULATE(T, B);
     V1_STORE_BLOCK(m, B);
 
-    V1_MASK_UPDATE_2(L);
     m    += BYTES(STORM_B);
     c    += BYTES(STORM_B);
     clen -= BYTES(STORM_B);
@@ -188,9 +178,10 @@ static void storm_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, siz
     __m256i B[4];
     int i;
 
+    V1_MASK_UPDATE(L);
+
     STORM_PAD(lastblock, c, clen);
-    V1_ZERO_BLOCK(B); /* encrypt zero, ala OCB */
-    /* V1_BLOCKCIPHER_F(B, L); */
+    V1_ZERO_BLOCK(B); 
     V1_BLOCKCIPHER_ROTATED_F(B, L, 768);
     for(i = 0; i < 4; ++i) { /* lastblock xor B */
       const __m256i C_i = LOADU256(&lastblock[32 * i]);
@@ -201,26 +192,12 @@ static void storm_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, siz
     for(i = 0; i < 4; ++i) { /* T xor last block */
       T[i] = XOR256(T[i], LOADU256(&lastblock[32 * i]));
     }
-    /* TODO: doublecheck that this is correct
-             handling of the last block.
-    */
   }
 }
 
 static void storm_tag(__m256i * Te, const __m256i * Ta, const uint64_t * L) {
   V1_BLOCKCIPHER_ROTATED_F(Te, L, 512);
   V1_ACCUMULATE(Te, Ta);
-#if 0
-  for(i = 0; i < 4; ++i) {
-    Te[i] = XOR256(Te[i], LOADU256(&K[(4*i + 8)%16])); /* <<< 512 */
-  }
-
-  V1_PERMUTE_F(Te);
-
-  for(i = 0; i < 4; ++i) {
-    Te[i] = XOR256(Ta[i], XOR256(Te[i], LOADU256(&K[(4*i + 8)%16]))); /* <<< 512 */
-  }
-#endif
 }
 
 #if defined(STORM_DEBUG)
@@ -310,117 +287,3 @@ int storm_aead_decrypt(
   return (( (_mm256_movemask_epi8(Te[0]) & 0xFFFFFFFFULL) + 1) >> 32) - 1;
 }
 
-
-#if defined(STORM_CHECK)
-/* #include "kat.h" */
-
-static int check(const unsigned char *kat) {
-#define MAX_SIZE 4096
-  unsigned char w[MAX_SIZE];
-  unsigned char h[MAX_SIZE];
-  unsigned char k[32];
-  unsigned char n[16];
-
-  unsigned i;
-  int place = 0;
-
-  for(i = 0; i < MAX_SIZE; ++i)
-      w[i] = 255 & (i*197 + 123);
-
-  for(i = 0; i < MAX_SIZE; ++i)
-      h[i] = 255 & (i*193 + 123);
-
-  for(i = 0; i < sizeof k; ++i)
-      k[i] = 255 & (i*191 + 123);
-
-  for(i = 0; i < sizeof n; ++i)
-      n[i] = 255 & (i*181 + 123);
-
-  for(i = 0; i < MAX_SIZE; ++i) {
-    unsigned char m[MAX_SIZE];
-    unsigned char c[MAX_SIZE + 32];
-    size_t mlen;
-    size_t clen;
-    size_t hlen;
-
-    memset(m, 0, sizeof m);
-    memcpy(m, w, i);
-
-    clen = 0;
-    mlen = hlen = i;
-
-    storm_aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
-    /* if( 0 != memcmp(kat, c, clen) ) {place = 1; goto fail;} */
-
-    memset(m, 0, sizeof m);
-    mlen = 0;
-
-    if( 0 != storm_aead_decrypt(m, &mlen, h, hlen, c, clen, n, k) ) {
-      place = 2;
-      goto fail;
-    }
-
-    if( 0 != memcmp(m, w, mlen) ) {
-      place = 3;
-      goto fail;
-    }
-
-    kat += clen;
-  }
-  printf("ok\n");
-  return 0;
-fail:
-  printf("fail at %u:%d\n", i, place);
-  return -1;
-}
-
-int main() {
-  return check(0);
-}
-#endif
-
-#if defined(TEST_V4)
-#include <unistd.h>
-#include <fcntl.h>
-
-int main() {
-  __m256i A[4][4] = {0}, B[16] = {0};
-  uint64_t L_A[32] = {0}, L_B[32] = {0};
-  int i, j;
-
-  int fd = open("/dev/urandom", 0);
-  read(fd, A, sizeof A);
-  read(fd, L_A, sizeof L_A);
-  close(fd);
-
-  memcpy(B, A, sizeof B);
-  memcpy(L_B, L_A, sizeof L_B);
-
-  for(i = 0; i < 10; ++i) {
-    for(j = 0; j < 4; ++j) {
-      V1_MASK_UPDATE_1(L_A);
-      V1_BLOCKCIPHER_F(A[j], L_A);
-      V1_MASK_UPDATE_2(L_A);
-      /* V1_MASK_UPDATE(L_A); */
-    }
-  }
-
-  for(i = 0; i < 10; ++i) {
-    V4_MASK_UPDATE_1(L_B);
-    V4_BLOCKCIPHER_F(B, L_B);
-    V4_MASK_UPDATE_2(L_B);
-  }
-
-  for(i = 0; i < 4; ++i) {
-    A[i][0] = XOR256(A[i][0], B[4*i+0]);
-    A[i][1] = XOR256(A[i][1], B[4*i+1]);
-    A[i][2] = XOR256(A[i][2], B[4*i+2]);
-    A[i][3] = XOR256(A[i][3], B[4*i+3]);
-  }
-
-  for(i = 0; i < 4; ++i) /* should be all-0 */
-    print_state(A[i]);
-
-  return 0;
-}
-#endif

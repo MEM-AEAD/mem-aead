@@ -122,11 +122,11 @@
   C[15] = _mm256_permute2x128_si256(t1, t3, 0x31);  \
 } while(0)
 
-#define V4_XOR_MASK(B, L) do {            \
-  int i;                                  \
-  for(i = 0; i < 16; ++i) {               \
-    B[i] = XOR256(B[i], LOADU256(&L[i])); \
-  }                                       \
+#define V4_XOR_MASK(B, L) do {              \
+  int i;                                    \
+  for(i = 0; i < 16; ++i) {                 \
+    B[i] = XOR256(B[i], LOADU256(&L[i+1])); \
+  }                                         \
 } while(0)
 
 #define V4_LOAD_BLOCK(B, m) do { \
