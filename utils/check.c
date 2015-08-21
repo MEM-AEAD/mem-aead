@@ -34,7 +34,7 @@ int storm_aead_decrypt(
 
 int check(const unsigned char *kat)
 {
-#define MAX_SIZE 256
+#define MAX_SIZE 768
     unsigned char w[MAX_SIZE];
     unsigned char h[MAX_SIZE];
     unsigned char k[32];

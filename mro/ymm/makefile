@@ -8,6 +8,6 @@ bench:
 	@rm bench
 
 check:
-	@$(CC) $(CFLAGS) -I. -o check ../../utils/check.c storm.c
+	@$(CC) $(CFLAGS) -I../ -o check ../../utils/check.c storm.c
 	@./check
 	@rm check

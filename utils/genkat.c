@@ -30,7 +30,7 @@ int storm_aead_decrypt(
 
 static void genkat(void)
 {
-#define MAX_SIZE 256
+#define MAX_SIZE 768
 	unsigned char w[MAX_SIZE];
 	unsigned char h[MAX_SIZE];
 	unsigned char k[32];
