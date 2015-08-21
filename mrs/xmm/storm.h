@@ -15,7 +15,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "storm_config.h"
 
 /* high-level operations */
 void storm_aead_encrypt(

@@ -11,6 +11,7 @@
    this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
 #include <string.h>
+#include <stdio.h>
 #include "storm.h"
 
 #if defined(_MSC_VER)
@@ -19,6 +20,9 @@
     #include <x86intrin.h>
 #endif
 
+#define STORM_W 64               /* word size */
+#define STORM_R 4                /* round number */
+#define STORM_T (STORM_W *  4)   /* tag size */
 #define STORM_N (STORM_W *  2)   /* nonce size */
 #define STORM_K (STORM_W *  4)   /* key size */
 #define STORM_B (STORM_W * 16)   /* permutation width */
@@ -184,12 +188,6 @@ do                                  \
     memcpy(OUT, IN, INLEN);         \
 } while(0)
 
-/*
-old padding:
-OUT[INLEN] = 0x01;
-OUT[OUTLEN - 1] |= 0x80;
-*/
-
 #define ABSORB_BLOCK(S, IN)                                   \
 do                                                            \
 {                                                             \
@@ -200,6 +198,7 @@ do                                                            \
         S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(STORM_W))); \
     }                                                         \
 } while(0)
+
 
 #define ABSORB_LASTBLOCK(S, IN, INLEN)                 \
 do                                                     \
@@ -263,12 +262,6 @@ do                                                                \
     memcpy(OUT, lastblock, INLEN);                                \
 } while(0)
 
-/*
-old padding:
-lastblock[INLEN] ^= 0x01;
-lastblock[BYTES(RATE)-1] ^= 0x80;
-*/
-
 #define INIT(S, KEY, IV, IVLEN, TAG)               \
 do                                                 \
 {                                                  \
@@ -284,34 +277,34 @@ do                                                 \
     S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));    \
 } while(0)
 
-#define ABSORB_DATA(S, IN, INLEN)                     \
-do                                                    \
-{                                                     \
-    if(INLEN > 0)                                     \
-    {                                                 \
-        size_t i = 0;                                 \
-        size_t l = INLEN;                             \
-        while(l >= BYTES(STORM_B))                    \
-        {                                             \
-            ABSORB_BLOCK(S, IN + i);                  \
-            i += BYTES(STORM_B); l -= BYTES(STORM_B); \
-        }                                             \
-        ABSORB_LASTBLOCK(S, IN + i, l);               \
-    }                                                 \
+#define ABSORB_DATA(S, IN, INLEN)                 \
+do                                                \
+{                                                 \
+    size_t i = 0;                                 \
+    size_t l = INLEN;                             \
+    while (l >= BYTES(STORM_B))                   \
+    {                                             \
+        ABSORB_BLOCK(S, IN + i);                  \
+        i += BYTES(STORM_B); l -= BYTES(STORM_B); \
+    }                                             \
+    if (l > 0)                                    \
+    {                                             \
+        ABSORB_LASTBLOCK(S, IN + i, l);           \
+    }                                             \
 } while(0)
 
 #define ENCRYPT_DATA(S, OUT, IN, INLEN)           \
 do                                                \
 {                                                 \
-    if(INLEN > 0)                                 \
+    size_t i = 0;                                 \
+    size_t l = INLEN;                             \
+    while (l >= BYTES(RATE))                      \
     {                                             \
-        size_t i = 0;                             \
-        size_t l = INLEN;                         \
-        while(l >= BYTES(RATE))                   \
-        {                                         \
-            ENCRYPT_BLOCK(S, OUT + i, IN + i);    \
-            i += BYTES(RATE); l -= BYTES(RATE);   \
-        }                                         \
+        ENCRYPT_BLOCK(S, OUT + i, IN + i);        \
+        i += BYTES(RATE); l -= BYTES(RATE);       \
+    }                                             \
+    if (l > 0)                                    \
+    {                                             \
         ENCRYPT_LASTBLOCK(S, OUT + i, IN + i, l); \
     }                                             \
 } while(0)
@@ -319,15 +312,15 @@ do                                                \
 #define DECRYPT_DATA(S, OUT, IN, INLEN)           \
 do                                                \
 {                                                 \
-    if(INLEN > 0)                                 \
+    size_t i = 0;                                 \
+    size_t l = INLEN;                             \
+    while (l >= BYTES(RATE))                      \
     {                                             \
-        size_t i = 0;                             \
-        size_t l = INLEN;                         \
-        while(l >= BYTES(RATE))                   \
-        {                                         \
-            DECRYPT_BLOCK(S, OUT + i, IN + i);    \
-            i += BYTES(RATE), l -= BYTES(RATE);   \
-        }                                         \
+        DECRYPT_BLOCK(S, OUT + i, IN + i);        \
+        i += BYTES(RATE), l -= BYTES(RATE);       \
+    }                                             \
+    if (l > 0)                                    \
+    {                                             \
         DECRYPT_LASTBLOCK(S, OUT + i, IN + i, l); \
     }                                             \
 } while(0)

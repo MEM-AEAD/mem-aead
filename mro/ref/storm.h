@@ -39,7 +39,7 @@ typedef enum tag__
     ENC_TAG     = 0x01
 } tag_t;
 
-/* Workaround for C89 compilers */
+/* workaround for C89 compilers */
 #if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L)
   #if   defined(_MSC_VER)
     #define STORM_INLINE __inline

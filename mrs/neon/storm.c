@@ -230,34 +230,34 @@ do {                                                         \
     S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));              \
 } while(0)
 
-#define ABSORB_DATA(S, IN, INLEN)                     \
-do                                                    \
-{                                                     \
-    if (INLEN > 0)                                    \
-    {                                                 \
-        size_t i = 0;                                 \
-        size_t l = INLEN;                             \
-        while (l >= BYTES(STORM_B))                   \
-        {                                             \
-            ABSORB_BLOCK(S, IN + i);                  \
-            i += BYTES(STORM_B); l -= BYTES(STORM_B); \
-        }                                             \
-        ABSORB_LASTBLOCK(S, IN + i, l);               \
-    }                                                 \
+#define ABSORB_DATA(S, IN, INLEN)                 \
+do                                                \
+{                                                 \
+    size_t i = 0;                                 \
+    size_t l = INLEN;                             \
+    while (l >= BYTES(STORM_B))                   \
+    {                                             \
+        ABSORB_BLOCK(S, IN + i);                  \
+        i += BYTES(STORM_B); l -= BYTES(STORM_B); \
+    }                                             \
+    if (l > 0)                                    \
+    {                                             \
+        ABSORB_LASTBLOCK(S, IN + i, l);           \
+    }                                             \
 } while(0)
 
 #define ENCRYPT_DATA(S, OUT, IN, INLEN)           \
 do                                                \
 {                                                 \
-    if (INLEN > 0)                                \
+   size_t i = 0;                                  \
+   size_t l = INLEN;                              \
+   while (l >= BYTES(RATE))                       \
+   {                                              \
+       ENCRYPT_BLOCK(S, OUT + i, IN + i);         \
+       i += BYTES(RATE); l -= BYTES(RATE);        \
+   }                                              \
+    if (l > 0)                                    \
     {                                             \
-        size_t i = 0;                             \
-        size_t l = INLEN;                         \
-        while (l >= BYTES(RATE))                  \
-        {                                         \
-            ENCRYPT_BLOCK(S, OUT + i, IN + i);    \
-            i += BYTES(RATE); l -= BYTES(RATE);   \
-        }                                         \
         ENCRYPT_LASTBLOCK(S, OUT + i, IN + i, l); \
     }                                             \
 } while(0)
@@ -265,15 +265,15 @@ do                                                \
 #define DECRYPT_DATA(S, OUT, IN, INLEN)           \
 do                                                \
 {                                                 \
-    if (INLEN > 0)                                \
+    size_t i = 0;                                 \
+    size_t l = INLEN;                             \
+    while (l >= BYTES(RATE))                      \
     {                                             \
-        size_t i = 0;                             \
-        size_t l = INLEN;                         \
-        while (l >= BYTES(RATE))                  \
-        {                                         \
-            DECRYPT_BLOCK(S, OUT + i, IN + i);    \
-            i += BYTES(RATE); l -= BYTES(RATE);   \
-        }                                         \
+        DECRYPT_BLOCK(S, OUT + i, IN + i);        \
+        i += BYTES(RATE); l -= BYTES(RATE);       \
+    }                                             \
+    if (l > 0)                                    \
+    {                                             \
         DECRYPT_LASTBLOCK(S, OUT + i, IN + i, l); \
     }                                             \
 } while(0)
