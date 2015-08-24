@@ -96,7 +96,6 @@ static STORM_INLINE void storm_pad(uint8_t * out, const uint8_t * in, const size
     memset(out, 0, BYTES(STORM_B));
     memcpy(out, in, inlen);
     out[inlen] = 0x01;
-    out[BYTES(STORM_B) - 1] |= 0x80;
 }
 
 static STORM_INLINE void storm_init_mask(storm_state_t mask, const unsigned char * k, const unsigned char * n, tag_t tag)

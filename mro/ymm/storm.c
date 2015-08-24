@@ -21,7 +21,6 @@
   memset(out, 0, BYTES(STORM_B));      \
   memcpy(out, in, inlen);              \
   out[inlen] = 0x01;                   \
-  out[BYTES(STORM_B) - 1] |= 0x80;     \
 } while(0)
 
 static void storm_init_abs(__m256i B[4], const uint8_t * k, const uint8_t * n) {

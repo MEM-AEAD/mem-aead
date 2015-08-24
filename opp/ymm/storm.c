@@ -20,7 +20,6 @@
   memset(out, 0, BYTES(STORM_B));      \
   memcpy(out, in, inlen);              \
   out[inlen] = 0x01;                   \
-  out[BYTES(STORM_B) - 1] |= 0x80;     \
 } while(0)
 
 static void storm_kdf(uint64_t * Ka, uint64_t * Ke, const uint8_t * k, const uint8_t * n) {
@@ -132,7 +131,7 @@ static void storm_encrypt_data(__m256i T[4], uint8_t * c, const uint8_t * m, siz
     int i;
     V1_MASK_UPDATE(L);
     STORM_PAD(lastblock, m, mlen);
-    V1_ZERO_BLOCK(B); 
+    V1_ZERO_BLOCK(B);
     V1_BLOCKCIPHER_ROTATED_F(B, L, 768);
     for(i = 0; i < 4; ++i) { /* lastblock xor B and T xor last block */
       const __m256i M_i = LOADU256(&lastblock[32 * i]);
@@ -181,7 +180,7 @@ static void storm_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, siz
     V1_MASK_UPDATE(L);
 
     STORM_PAD(lastblock, c, clen);
-    V1_ZERO_BLOCK(B); 
+    V1_ZERO_BLOCK(B);
     V1_BLOCKCIPHER_ROTATED_F(B, L, 768);
     for(i = 0; i < 4; ++i) { /* lastblock xor B */
       const __m256i C_i = LOADU256(&lastblock[32 * i]);

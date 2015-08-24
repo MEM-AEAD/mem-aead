@@ -186,7 +186,6 @@ do                                      \
     memset(BLOCK, 0, BLOCKLEN);         \
     memcpy(BLOCK, IN, INLEN);           \
     BLOCK[INLEN] = 0x01;                \
-    BLOCK[BLOCKLEN - 1] |= 0x80;        \
 } while(0)
 
 #define INIT_MASK(L, KEY, IV, IVLEN, TAG)          \

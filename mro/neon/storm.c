@@ -141,7 +141,6 @@ do                                  \
     memset(OUT, 0, OUTLEN);         \
     memcpy(OUT, IN, INLEN);         \
     OUT[INLEN] = 0x01;              \
-    OUT[OUTLEN - 1] |= 0x80;        \
 } while(0)
 
 #define INIT_MASK(L, KEY, IV, IVLEN, TAG)                    \
