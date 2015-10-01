@@ -627,7 +627,7 @@ int storm_aead_decrypt(
     /* verify tag */
     T[0] = _mm_cmpeq_epi8(SA[0], LOADU(c + clen - BYTES(STORM_T)  ));
     T[1] = _mm_cmpeq_epi8(SA[1], LOADU(c + clen - BYTES(STORM_T)/2));
-    result = (((unsigned long)_mm_movemask_epi8(AND(T[0], T[1])) + 1) >> 16) - 1;
+    result = (((_mm_movemask_epi8(AND(T[0], T[1])) & 0xFFFFUL) + 1) >> 16) - 1;
 
     /* burn decrypted plaintext on authentication failure */
     if (result != 0) { burn(m, 0, *mlen); }
