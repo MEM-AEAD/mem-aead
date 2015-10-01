@@ -114,7 +114,7 @@ static STORM_INLINE void storm_init_mask(storm_state_t mask, const unsigned char
 
     L[ 8] = 0;
     L[ 9] = 0;
-    L[10] = STORM_L * 2; /* we count single not double rounds */
+    L[10] = STORM_L;
     L[11] = STORM_T;
 
     L[12] = LOAD(k + 0 * BYTES(STORM_W));
@@ -476,10 +476,9 @@ void storm_finalise(storm_state_t sa, storm_state_t se, storm_state_t mask, unsi
     storm_word_t * L = mask->S;
     uint8_t block[BYTES(STORM_B)];
 
-    /* determine how often to update mask depending on hlen and mlen */
+    /* determine how often to update the mask depending on hlen and mlen */
     i = BYTES(STORM_B);
-    j = 2 + ((mlen % i) + i - 1) / i;
-    j = j - ((hlen % i) + i - 1) / i;
+    j = 2 + ( ( mlen % i ) - ( hlen % i ) ) / i;
 
     for (i = 0; i < j; ++i)
     {
