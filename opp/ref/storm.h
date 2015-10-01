@@ -20,7 +20,7 @@
 #include <string.h>
 
 #define STORM_W 64             /* word size */
-#define STORM_R 4              /* round number */
+#define STORM_L 4              /* double round number */
 #define STORM_T (STORM_W *  4) /* tag size */
 #define STORM_N (STORM_W *  2) /* nonce size */
 #define STORM_K (STORM_W *  4) /* key size */
@@ -32,12 +32,6 @@ typedef struct state__
 {
     storm_word_t S[16];
 } storm_state_t[1];
-
-typedef enum tag__
-{
-    ABS_TAG     = 0x00,
-    ENC_TAG     = 0x01
-} tag_t;
 
 /* Workaround for C89 compilers */
 #if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L)
