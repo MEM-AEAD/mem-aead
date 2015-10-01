@@ -206,7 +206,6 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t m
     printf("MASK:\n");
     print_state(mask);
 #endif
-
 }
 
 static STORM_INLINE void storm_absorb_lastblock(storm_state_t state, storm_state_t mask, const uint8_t * in, size_t inlen)

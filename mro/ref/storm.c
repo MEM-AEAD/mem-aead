@@ -19,6 +19,7 @@
 #define R3 63
 
 #define ROTR(x, c) ( ((x) >> (c)) | ((x) << (BITS(x) - (c))) )
+#define ROTL(x, c) ( ((x) << (c)) | ((x) >> (BITS(x) - (c))) )
 
 /* quarter round */
 #define G(A, B, C, D)                            \
@@ -62,50 +63,78 @@ static STORM_INLINE void storm_pad(uint8_t * out, const uint8_t * in, const size
     out[inlen] = 0x01;
 }
 
-static STORM_INLINE void storm_init_mask(storm_state_t mask, const unsigned char * key, const unsigned char * iv, const size_t ivlen, tag_t tag)
+static STORM_INLINE void storm_init_mask(storm_state_t mask, const unsigned char * k, const unsigned char * n)
 {
-    size_t i;
     storm_word_t * L = mask->S;
-    memset(mask, 0, sizeof(storm_state_t));
 
-    /* load nonce/tag */
-    for (i = 0; i < ivlen; ++i)
-    {
-        L[i] = LOAD(iv + i * BYTES(STORM_W));
-    }
+    L[ 0] = LOAD(n + 0 * BYTES(STORM_W));
+    L[ 1] = LOAD(n + 1 * BYTES(STORM_W));
+    L[ 2] = 0;
+    L[ 3] = 0;
 
-    /* load key */
-    L[ 4] = LOAD(key + 0 * BYTES(STORM_W));
-    L[ 5] = LOAD(key + 1 * BYTES(STORM_W));
-    L[ 6] = LOAD(key + 2 * BYTES(STORM_W));
-    L[ 7] = LOAD(key + 3 * BYTES(STORM_W));
+    L[ 4] = 0;
+    L[ 5] = 0;
+    L[ 6] = 0;
+    L[ 7] = 0;
 
-    /* inject parameters */
-    L[12] = STORM_W;
-    L[13] = STORM_R;
-    L[14] = STORM_T;
-    L[15] = tag;
+    L[ 8] = 0;
+    L[ 9] = 0;
+    L[10] = STORM_L;
+    L[11] = STORM_T;
+
+    L[12] = LOAD(k + 0 * BYTES(STORM_W));
+    L[13] = LOAD(k + 1 * BYTES(STORM_W));
+    L[14] = LOAD(k + 2 * BYTES(STORM_W));
+    L[15] = LOAD(k + 3 * BYTES(STORM_W));
 
     /* apply permutation */
-    storm_permute(mask, STORM_R);
+    storm_permute(mask, STORM_L);
 
 #if defined(STORM_DEBUG)
-    printf("SETUP MASK (%02X):\n", tag);
+    printf("SETUP MASK:\n");
     print_state(mask);
 #endif
-
 }
 
-static STORM_INLINE void storm_update_mask(storm_state_t mask)
+/* phi */
+static STORM_INLINE void storm_phi(storm_state_t mask)
 {
     size_t i;
     storm_word_t * L = mask->S;
-    storm_word_t t = ROTR(L[0], 11) ^ (L[5] << 13);
+    storm_word_t t = ROTL(L[0], 53) ^ (L[5] << 13);
     for (i = 0; i < WORDS(STORM_B) - 1; ++i)
     {
         L[i] = L[i+1];
     }
     L[15] = t;
+}
+
+/* sigma: phi(x) ^ x */
+static STORM_INLINE void storm_sigma(storm_state_t mask)
+{
+    size_t i;
+    storm_word_t * L = mask->S;
+    storm_word_t t = ROTL(L[0], 53) ^ (L[5] << 13);
+    for (i = 0; i < WORDS(STORM_B) - 1; ++i)
+    {
+        L[i] ^= L[i+1];
+    }
+    L[15] ^= t;
+}
+
+/* lambda: phi^2(x) ^ phi(x) ^ x */
+static STORM_INLINE void storm_lambda(storm_state_t mask)
+{
+    size_t i;
+    storm_word_t * L = mask->S;
+    storm_word_t t0 = ROTL(L[0], 53) ^ (L[5] << 13);
+    storm_word_t t1 = ROTL(L[1], 53) ^ (L[6] << 13);
+    for (i = 0; i < WORDS(STORM_B) - 2; ++i)
+    {
+        L[i] ^= L[i+1] ^ L[i+2];
+    }
+    L[14] ^= (L[15] ^ t0);
+    L[15] ^= (t0 ^ t1);
 }
 
 static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t mask, const uint8_t * in)
@@ -124,7 +153,7 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t m
     }
 
     /* apply permutation */
-    storm_permute(block, STORM_R);
+    storm_permute(block, STORM_L);
 
     /* XOR mask and absorb into S */
     for (i = 0; i < WORDS(STORM_B); ++i)
@@ -132,15 +161,14 @@ static STORM_INLINE void storm_absorb_block(storm_state_t state, storm_state_t m
         S[i] ^=  B[i] ^ L[i];
     }
 
-    /* update key for the next block */
-    storm_update_mask(mask);
-
 #if defined(STORM_DEBUG)
     printf("ABSORBING BLOCK\n");
     printf("IN:\n");
     print_bytes(in, BYTES(STORM_B));
     printf("\nSTATE:\n");
     print_state(state);
+    printf("MASK:\n");
+    print_state(mask);
 #endif
 }
 
@@ -155,45 +183,50 @@ static STORM_INLINE void storm_absorb_lastblock(storm_state_t state, storm_state
 static STORM_INLINE void storm_finalise(storm_state_t state, storm_state_t mask, size_t hlen, size_t mlen)
 {
     size_t i;
-    storm_state_t block;
-    storm_word_t * B = block->S;
     storm_word_t * S = state->S;
     storm_word_t * L = mask->S;
 
-    /* load mask and XOR data lengths */
+    storm_sigma(mask);
+    storm_sigma(mask);
+
+    S[14] ^= hlen;
+    S[15] ^= mlen;
+
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
-        B[i] = L[i];
+        S[i] ^= L[i];
     }
-    B[14] ^= hlen;
-    B[15] ^= mlen;
 
     /* apply permutation */
-    storm_permute(block, STORM_R);
+    storm_permute(state, STORM_L);
 
-    /* XOR mask and absorb into S */
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
-        S[i] ^=  B[i] ^ L[i];
+        S[i] ^= L[i];
     }
 }
 
-static STORM_INLINE void storm_encrypt_block(const storm_state_t mask, size_t block_nr, uint8_t * out, const uint8_t * in)
+static STORM_INLINE void storm_encrypt_block(storm_state_t mask, storm_state_t tag, size_t block_nr, uint8_t * out, const uint8_t * in)
 {
     size_t i;
     storm_state_t block;
     storm_word_t * B = block->S;
-    const storm_word_t * L = mask->S;
+    storm_word_t * L = mask->S;
+    storm_word_t * T = tag->S;
 
-    /* load mask and XOR block counter */
+    /* load mask and XOR authentication tag and block counter */
     for (i = 0; i < WORDS(STORM_B); ++i)
     {
         B[i] = L[i];
     }
+    B[0] ^= T[0];
+    B[1] ^= T[1];
+    B[2] ^= T[2];
+    B[3] ^= T[3];
     B[15] ^= block_nr;
 
     /* apply permutation */
-    storm_permute(block, STORM_R);
+    storm_permute(block, STORM_L);
 
     /* encrypt block */
     for (i = 0; i < WORDS(STORM_B); ++i)
@@ -208,27 +241,34 @@ static STORM_INLINE void storm_encrypt_block(const storm_state_t mask, size_t bl
     print_bytes(in, BYTES(STORM_B));
     printf("OUT:\n");
     print_bytes(out, BYTES(STORM_B));
+    printf("MASK:\n");
+    print_state(mask);
 #endif
 }
 
-static STORM_INLINE void storm_encrypt_lastblock(const storm_state_t mask, size_t block_nr, uint8_t * out, const uint8_t * in, size_t inlen)
+static STORM_INLINE void storm_encrypt_lastblock(storm_state_t mask, storm_state_t tag, size_t block_nr, uint8_t * out, const uint8_t * in, size_t inlen)
 {
     uint8_t block[BYTES(STORM_B)];
     memset(block, 0, BYTES(STORM_B));
     memcpy(block, in, inlen);
-    storm_encrypt_block(mask, block_nr, block, block);
+    storm_encrypt_block(mask, tag, block_nr, block, block);
     memcpy(out, block, inlen);
     burn(block, 0, BYTES(STORM_B));
 }
 
 /* low-level interface functions */
-void storm_absorb_data(storm_state_t state, storm_state_t mask, const unsigned char * in, size_t inlen)
+void storm_absorb_data(storm_state_t state, storm_state_t mask, const unsigned char * in, size_t inlen, tag_t flag)
 {
+    if (flag)
+    {
+        storm_sigma(mask);
+    }
     while (inlen >= BYTES(STORM_B))
     {
         storm_absorb_block(state, mask, in);
         inlen -= BYTES(STORM_B);
         in    += BYTES(STORM_B);
+        storm_phi(mask);
     }
     if (inlen > 0)
     {
@@ -236,12 +276,13 @@ void storm_absorb_data(storm_state_t state, storm_state_t mask, const unsigned c
     }
 }
 
-void storm_encrypt_data(const storm_state_t mask, unsigned char * out, const unsigned char * in, size_t inlen)
+void storm_encrypt_data(storm_state_t mask, storm_state_t tag, unsigned char * out, const unsigned char * in, size_t inlen)
 {
     size_t i = 0;
+    storm_lambda(mask);
     while (inlen >= BYTES(STORM_B))
     {
-        storm_encrypt_block(mask, i, out, in);
+        storm_encrypt_block(mask, tag, i, out, in);
         inlen -= BYTES(STORM_B);
         in    += BYTES(STORM_B);
         out   += BYTES(STORM_B);
@@ -249,13 +290,13 @@ void storm_encrypt_data(const storm_state_t mask, unsigned char * out, const uns
     }
     if (inlen > 0)
     {
-        storm_encrypt_lastblock(mask, i, out, in, inlen);
+        storm_encrypt_lastblock(mask, tag, i, out, in, inlen);
     }
 }
 
-void storm_decrypt_data(const storm_state_t mask, unsigned char * out, const unsigned char * in, size_t inlen)
+void storm_decrypt_data(storm_state_t mask, storm_state_t tag, unsigned char * out, const unsigned char * in, size_t inlen)
 {
-    storm_encrypt_data(mask, out, in, inlen);
+    storm_encrypt_data(mask, tag, out, in, inlen);
 }
 
 void storm_output_tag(storm_state_t state, unsigned char * tag)
@@ -301,26 +342,32 @@ void storm_aead_encrypt(
     const unsigned char *key
     )
 {
-    storm_state_t state, mask;
+    storm_state_t state, la, le;
+
+    memset(state, 0, sizeof(storm_state_t));
+    storm_init_mask(le, key, nonce);
 
     /* absorb header and message */
-    memset(state, 0, sizeof(storm_state_t));
-    storm_init_mask(mask, key, nonce, WORDS(STORM_N), ABS_TAG);
-    storm_absorb_data(state, mask, h, hlen);
-    storm_absorb_data(state, mask, m, mlen);
-    storm_finalise(state, mask, hlen, mlen);
+    memcpy(la, le, sizeof(storm_state_t));
+    storm_absorb_data(state, la, h, hlen, ABS_AD);
+
+    memcpy(la, le, sizeof(storm_state_t));
+    storm_absorb_data(state, la, m, mlen, ABS_MSG);
+
+    memcpy(la, le, sizeof(storm_state_t));
+    storm_finalise(state, la, hlen, mlen);
 
     /* extract tag */
     storm_output_tag(state, c + mlen);
     *clen = mlen + BYTES(STORM_T);
 
     /* encrypt message */
-    storm_init_mask(mask, key, c + mlen, WORDS(STORM_T), ENC_TAG);
-    storm_encrypt_data(mask, c, m, mlen);
+    storm_encrypt_data(le, state, c, m, mlen);
 
     /* empty buffers */
     burn(state, 0, sizeof(storm_state_t));
-    burn(mask, 0, sizeof(storm_state_t));
+    burn(la, 0, sizeof(storm_state_t));
+    burn(le, 0, sizeof(storm_state_t));
 }
 
 int storm_aead_decrypt(
@@ -333,21 +380,36 @@ int storm_aead_decrypt(
 {
     int result = -1;
     unsigned char tag[BYTES(STORM_T)];
-    storm_state_t state, mask;
+    storm_state_t state, la, le;
+    storm_word_t * T = state->S;
 
     if (clen < BYTES(STORM_T)) { return -1; }
 
-    /* decrypt message */
-    storm_init_mask(mask, key, c + clen - BYTES(STORM_T), WORDS(STORM_T), ENC_TAG);
-    storm_decrypt_data(mask, m, c, clen - BYTES(STORM_T));
+    storm_init_mask(le, key, nonce);
+    memcpy(la, le, sizeof(storm_state_t));
+
+    /* set first 4 state words temporarily to received tag */
     *mlen = clen - BYTES(STORM_T);
+    T[ 0] = LOAD(c + *mlen + 0 * BYTES(STORM_W));
+    T[ 1] = LOAD(c + *mlen + 1 * BYTES(STORM_W));
+    T[ 2] = LOAD(c + *mlen + 2 * BYTES(STORM_W));
+    T[ 3] = LOAD(c + *mlen + 3 * BYTES(STORM_W));
+
+    /* decrypt message */
+    storm_decrypt_data(le, state, m, c, clen - BYTES(STORM_T));
+
+    /* reset state */
+    memset(state, 0, sizeof(storm_state_t));
 
     /* absorb header and message */
-    memset(state, 0, sizeof(storm_state_t));
-    storm_init_mask(mask, key, nonce, WORDS(STORM_N), ABS_TAG);
-    storm_absorb_data(state, mask, h, hlen);
-    storm_absorb_data(state, mask, m, *mlen);
-    storm_finalise(state, mask, hlen, *mlen);
+    memcpy(le, la, sizeof(storm_state_t));
+    storm_absorb_data(state, la, h, hlen, ABS_AD);
+
+    memcpy(la, le, sizeof(storm_state_t));
+    storm_absorb_data(state, la, m, *mlen, ABS_MSG);
+
+    memcpy(la, le, sizeof(storm_state_t));
+    storm_finalise(state, la, hlen, *mlen);
 
     /* extract tag */
     storm_output_tag(state, tag);
@@ -360,7 +422,8 @@ int storm_aead_decrypt(
 
     /* empty buffers */
     burn(state, 0, sizeof(storm_state_t));
-    burn(mask, 0, sizeof(storm_state_t));
+    burn(la, 0, sizeof(storm_state_t));
+    burn(le, 0, sizeof(storm_state_t));
 
     return result;
 }
