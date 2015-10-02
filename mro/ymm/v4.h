@@ -122,11 +122,11 @@
   C[15] = _mm256_permute2x128_si256(t1, t3, 0x31);  \
 } while(0)
 
-#define V4_XOR_MASK(B, L) do {            \
-  int i;                                  \
-  for(i = 0; i < 16; ++i) {               \
-    B[i] = XOR256(B[i], LOADU256(&L[i])); \
-  }                                       \
+#define V4_XOR_MASK(B, L) do {              \
+  int i;                                    \
+  for(i = 0; i < 16; ++i) {                 \
+    B[i] = XOR256(B[i], LOADU256(&L[i+0])); \
+  }                                         \
 } while(0)
 
 #define V4_LOAD_BLOCK(B, m) do { \
@@ -153,23 +153,25 @@
   }                                 \
 } while(0)
 
-#define V4_MASK_UPDATE_1(L) do { \
-  STOREU256(&L[16], XOR256(ROT256(LOADU256(&L[0]), 11), SHL256(LOADU256(&L[5]), 13))); \
+#define V4_PHI_UPDATE_1(L) do {                           \
+  STOREU256(&L[16], XOR256(ROT256(LOADU256(&L[0]), 11),   \
+                           SHL256(LOADU256(&L[5]), 13))); \
 } while(0)
 
-#define V4_MASK_UPDATE_2(L) do {       \
+#define V4_PHI_UPDATE_2(L) do {        \
   STOREU256(&L[ 0], LOADU256(&L[ 4])); \
   STOREU256(&L[ 4], LOADU256(&L[ 8])); \
   STOREU256(&L[ 8], LOADU256(&L[12])); \
   STOREU256(&L[12], LOADU256(&L[16])); \
 } while(0)
 
-#define V4_MASK_UPDATE(L) do {         \
-  STOREU256(&L[ 0], LOADU256(&L[ 4])); \
-  STOREU256(&L[ 4], LOADU256(&L[ 8])); \
-  STOREU256(&L[ 8], LOADU256(&L[12])); \
-  STOREU256(&L[12], LOADU256(&L[16])); \
-  STOREU256(&L[16], XOR256(ROT256(LOADU256(&L[0]), 11), SHL256(LOADU256(&L[5]), 13))); \
+#define V4_PHI_UPDATE(L) do {                             \
+  STOREU256(&L[ 0], LOADU256(&L[ 4]));                    \
+  STOREU256(&L[ 4], LOADU256(&L[ 8]));                    \
+  STOREU256(&L[ 8], LOADU256(&L[12]));                    \
+  STOREU256(&L[12], LOADU256(&L[16]));                    \
+  STOREU256(&L[16], XOR256(ROT256(LOADU256(&L[0]), 11),   \
+                           SHL256(LOADU256(&L[5]), 13))); \
 } while(0)
 
 

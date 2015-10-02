@@ -50,44 +50,105 @@
 } while(0)
 
 
-#define V1_MASK_UPDATE_1(L) do {            \
+#define V1_PHI_UPDATE_1(L) do {             \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);   \
 } while(0)
 
-#define V1_MASK_UPDATE_2(L) do {    \
+#define V1_PHI_UPDATE_2(L) do {     \
   int i;                            \
   for(i = 0; i < 16; ++i) {         \
     L[i] = L[i+1];                  \
   }                                 \
 } while(0)
 
-#define V1_MASK_UPDATE(L) do {                       \
+#if 0
+#define V1_PHI_UPDATE(L) do {                        \
   const uint64_t t = ROT64(L[0], 11) ^ (L[5] << 13); \
-  int i;                                             \
-  /* memmove(&L[0], &L[1], 15 * sizeof(L[0]));*/     \
-  for(i = 0; i < 15; ++i) L[i] = L[i+1]; /* BUG? */  \
-  /* STOREU256(&L[ 0], LOADU256(&L[ 1])); */ \
-  /* STOREU256(&L[ 4], LOADU256(&L[ 5])); */ \
-  /* STOREU256(&L[ 8], LOADU256(&L[ 9])); */ \
-  /* STOREU256(&L[12], LOADU256(&L[13])); */ \
+  /* int i;  */                                      \
+  memmove(&L[0], &L[1], 15 * sizeof(L[0]));          \
+  /* This triggers codegen bug on GCC! */            \
+  /* for(i = 0; i < 15; ++i) L[i] = L[i+1]; */       \
+  /* Also acceptable:                     */         \
+  /* STOREU256(&L[ 0], LOADU256(&L[ 1])); */         \
+  /* STOREU256(&L[ 4], LOADU256(&L[ 5])); */         \
+  /* STOREU256(&L[ 8], LOADU256(&L[ 9])); */         \
+  /* STOREU256(&L[12], LOADU256(&L[13])); */         \
   L[15] = t;                                         \
 } while(0)
+#endif
 
-#define V1_MASK_ROT_768(L) do {        \
-	const __m256i t = LOADU256(&L[ 0]);  \
-	STOREU256(&L[ 0], LOADU256(&L[ 4])); \
-	STOREU256(&L[ 4], LOADU256(&L[ 8])); \
-	STOREU256(&L[ 8], LOADU256(&L[12])); \
-	STOREU256(&L[12], t);                \
+#define V1_PHI_UPDATE(L) do {             \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13); \
+  STOREU256(&L[ 0], LOADU256(&L[ 1]));    \
+  STOREU256(&L[ 4], LOADU256(&L[ 5]));    \
+  STOREU256(&L[ 8], LOADU256(&L[ 9]));    \
+  STOREU256(&L[12], LOADU256(&L[13]));    \
 } while(0)
 
-#define V1_MASK_ROT_256(L) do {        \
-	const __m256i t = LOADU256(&L[12]);  \
-  STOREU256(&L[12], LOADU256(&L[ 8])); \
-  STOREU256(&L[ 8], LOADU256(&L[ 4])); \
-  STOREU256(&L[ 4], LOADU256(&L[ 0])); \
-  STOREU256(&L[ 0], t);                \
+#define V1_SIGMA_UPDATE(L) do {                                  \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);                        \
+  STOREU256(&L[ 0], XOR256(LOADU256(&L[ 0]), LOADU256(&L[ 1]))); \
+  STOREU256(&L[ 4], XOR256(LOADU256(&L[ 4]), LOADU256(&L[ 5]))); \
+  STOREU256(&L[ 8], XOR256(LOADU256(&L[ 8]), LOADU256(&L[ 9]))); \
+  STOREU256(&L[12], XOR256(LOADU256(&L[12]), LOADU256(&L[13]))); \
 } while(0)
+
+#define V1_SIGMA2_UPDATE(L) do {                                 \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);                        \
+  L[17] = ROT64(L[1], 11) ^ (L[6] << 13);                        \
+  STOREU256(&L[ 0], XOR256(LOADU256(&L[ 0]), LOADU256(&L[ 2]))); \
+  STOREU256(&L[ 4], XOR256(LOADU256(&L[ 4]), LOADU256(&L[ 6]))); \
+  STOREU256(&L[ 8], XOR256(LOADU256(&L[ 8]), LOADU256(&L[10]))); \
+  STOREU256(&L[12], XOR256(LOADU256(&L[12]), LOADU256(&L[14]))); \
+} while(0)
+
+#define V1_LAMBDA_UPDATE(L) do {                                                           \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);                                                  \
+  L[17] = ROT64(L[1], 11) ^ (L[6] << 13);                                                  \
+  STOREU256(&L[ 0], XOR256(XOR256(LOADU256(&L[ 0]), LOADU256(&L[ 1])), LOADU256(&L[ 2]))); \
+  STOREU256(&L[ 4], XOR256(XOR256(LOADU256(&L[ 4]), LOADU256(&L[ 5])), LOADU256(&L[ 6]))); \
+  STOREU256(&L[ 8], XOR256(XOR256(LOADU256(&L[ 8]), LOADU256(&L[ 9])), LOADU256(&L[10]))); \
+  STOREU256(&L[12], XOR256(XOR256(LOADU256(&L[12]), LOADU256(&L[13])), LOADU256(&L[14]))); \
+} while(0)
+
+#if 0
+#define V1_SIGMA_UPDATE(L) do {                       \
+  int i;                                              \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
+  for(i = 0; i < 16; ++i) {                           \
+    L[i] ^= L[i+1];                                   \
+  }                                                   \
+} while(0)
+
+#define V1_SIGMA2_UPDATE(L) do {                      \
+  int i;                                              \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
+  L[17] = ROT64(L[1], 11) ^ (L[6] << 13);             \
+  for(i = 0; i < 16; ++i) {                           \
+    L[i] ^= L[i+2];                                   \
+  }                                                   \
+} while(0)
+
+#define V1_SIGMA3_UPDATE(L) do {                      \
+  int i;                                              \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
+  L[17] = ROT64(L[1], 11) ^ (L[6] << 13);             \
+  L[18] = ROT64(L[2], 11) ^ (L[7] << 13);             \
+  L[19] = ROT64(L[3], 11) ^ (L[8] << 13);             \
+  for(i = 0; i < 16; ++i) {                           \
+    L[i] ^= L[i+1] ^ L[i+2] ^ L[i+3];                 \
+  }                                                   \
+} while(0)
+
+#define V1_LAMBDA_UPDATE(L) do {                      \
+  int i;                                              \
+  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
+  L[17] = ROT64(L[1], 11) ^ (L[6] << 13);             \
+  for(i = 0; i < 16; ++i) {                           \
+    L[i] ^= L[i+1] ^ L[i+2];                          \
+  }                                                   \
+} while(0)
+#endif
 
 #define V1_ZERO_BLOCK(B) do {      \
   int i;                           \
@@ -103,25 +164,11 @@
   }                               \
 } while(0)
 
-#define V1_LOAD_BLOCK_N(B, m, n) do {  \
-  int i;                            \
-  for(i = 0; i < n; ++i) {          \
-    B[i] = LOADU256(&m[32 * i]);    \
-  }                                 \
-} while(0)
-
 #define V1_STORE_BLOCK(c, B) do { \
   int i;                          \
   for(i = 0; i < 4; ++i) {        \
     STOREU256(&c[32 * i], B[i]);  \
   }                               \
-} while(0)
-
-#define V1_STORE_BLOCK_N(c, B, n) do { \
-  int i;                               \
-  for(i = 0; i < n; ++i) {             \
-    STOREU256(&c[32 * i], B[i]);       \
-  }                                    \
 } while(0)
 
 #define V1_COPY_BLOCK_N(C, B, n) do { \
@@ -133,18 +180,11 @@
 
 #define V1_COPY_BLOCK(C, B) V1_COPY_BLOCK_N(C, B, 4)
 
-#define V1_XOR_MASK(B, L) do {              \
+#define V1_XOR_MASK(B, L) do {               \
   int i;                                    \
   for(i = 0; i < 4; ++i) {                  \
     B[i] = XOR256(B[i], LOADU256(&L[4*i])); \
   }                                         \
-} while(0)
-
-#define V1_XOR_ROTATED_MASK(B, L, R) do {                         \
-  int i;                                                          \
-  for(i = 0; i < 4; ++i) {                                        \
-    B[i] = XOR256(B[i], LOADU256(&L[(4*i + (16 - 4*R/256))%16])); \
-  }                                                               \
 } while(0)
 
 #define V1_ACCUMULATE(T, B) do { \
@@ -152,13 +192,6 @@
   for(i = 0; i < 4; ++i) {       \
     T[i] = XOR256(B[i], T[i]);   \
   }                              \
-} while(0)
-
-#define V1_ACCUMULATE_N(T, B, n) do { \
-  int i;                              \
-  for(i = 0; i < n; ++i) {            \
-    T[i] = XOR256(B[i], T[i]);        \
-  }                                   \
 } while(0)
 
 #define V1_BLOCKCIPHER_F(B, L) do { \
@@ -171,18 +204,6 @@
   V1_XOR_MASK(B, L);                \
   V1_PERMUTE_B(B);                  \
   V1_XOR_MASK(B, L);                \
-} while(0)
-
-#define V1_BLOCKCIPHER_ROTATED_F(B, L, R) do { \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
-  V1_PERMUTE_F(B);                             \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
-} while(0)
-
-#define V1_BLOCKCIPHER_ROTATED_B(B, L, R) do { \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
-  V1_PERMUTE_B(B);                             \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
 } while(0)
 
 #endif

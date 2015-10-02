@@ -8,13 +8,6 @@
 #define BYTES(X) (((X) + 7) / 8)
 #define WORDS(X) (((X) + (STORM_W - 1)) / STORM_W)
 
-/* this is x86, so we can just memcpy */
-static uint64_t load64(const void * in) {
-  uint64_t x;
-  memcpy(&x, in, sizeof x);
-  return x;
-}
-
 #define ADD256(A, B) _mm256_add_epi64((A), (B))
 #define SUB256(A, B) _mm256_sub_epi64((A), (B))
 #define XOR256(A, B) _mm256_xor_si256((A), (B))
