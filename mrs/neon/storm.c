@@ -14,14 +14,14 @@
 #include <string.h>
 #include <arm_neon.h>
 
-#define STORM_W 64               /* word size */
-#define STORM_R 4                /* round number */
-#define STORM_T (STORM_W *  4)   /* tag size */
-#define STORM_N (STORM_W *  2)   /* nonce size */
-#define STORM_K (STORM_W *  4)   /* key size */
-#define STORM_B (STORM_W * 16)   /* permutation width */
-#define STORM_C (STORM_W *  4)   /* capacity */
-#define RATE (STORM_B - STORM_C) /* rate */
+#define STORM_W 64                  /* word size */
+#define STORM_L 4                   /* round number */
+#define STORM_T (STORM_W *  4)      /* tag size */
+#define STORM_N (STORM_W *  2)      /* nonce size */
+#define STORM_K (STORM_W *  4)      /* key size */
+#define STORM_B (STORM_W * 16)      /* permutation width */
+#define STORM_C (STORM_W *  4)      /* capacity */
+#define STORM_R (STORM_B - STORM_C) /* rate */
 
 /* constants for ROTR */
 #define R0 32
@@ -130,7 +130,7 @@ do                    \
 do                               \
 {                                \
     int i;                       \
-    for(i = 0; i < STORM_R; ++i) \
+    for(i = 0; i < STORM_L; ++i) \
     {                            \
         F(S);                    \
     }                            \
@@ -167,20 +167,20 @@ do                                                            \
 {                                                             \
     size_t j;                                                 \
     PERMUTE(S);                                               \
-    for (j = 0; j < WORDS(RATE)/2; ++j)                       \
+    for (j = 0; j < WORDS(STORM_R)/2; ++j)                    \
     {                                                         \
         S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(STORM_W))); \
         STOREU(OUT + j * 2 * BYTES(STORM_W), S[j]);           \
     }                                                         \
 } while(0)
 
-#define ENCRYPT_LASTBLOCK(S, OUT, IN, INLEN)    \
-do                                              \
-{                                               \
-    ALIGN(32) unsigned char BLOCK[BYTES(RATE)]; \
-    PAD(BLOCK, sizeof BLOCK, IN, INLEN);        \
-    ENCRYPT_BLOCK(S, BLOCK, BLOCK);             \
-    memcpy(OUT, BLOCK, INLEN);                  \
+#define ENCRYPT_LASTBLOCK(S, OUT, IN, INLEN)       \
+do                                                 \
+{                                                  \
+    ALIGN(32) unsigned char BLOCK[BYTES(STORM_R)]; \
+    PAD(BLOCK, sizeof BLOCK, IN, INLEN);           \
+    ENCRYPT_BLOCK(S, BLOCK, BLOCK);                \
+    memcpy(OUT, BLOCK, INLEN);                     \
 } while(0)
 
 #define DECRYPT_BLOCK(S, OUT, IN)                           \
@@ -188,7 +188,7 @@ do                                                          \
 {                                                           \
     size_t j;                                               \
     PERMUTE(S);                                             \
-    for (j = 0; j < WORDS(RATE)/2; ++j)                     \
+    for (j = 0; j < WORDS(STORM_R)/2; ++j)                  \
     {                                                       \
         uint64x2_t T = LOADU(IN + j * 2 * BYTES(STORM_W));  \
         STOREU(OUT + j * 2 * BYTES(STORM_W), XOR(S[j], T)); \
@@ -200,14 +200,14 @@ do                                                          \
 do                                                            \
 {                                                             \
     size_t j;                                                 \
-    ALIGN(32) unsigned char BLOCK[BYTES(RATE)];               \
+    ALIGN(32) unsigned char BLOCK[BYTES(STORM_R)];            \
     PERMUTE(S);                                               \
-    for (j = 0; j < WORDS(RATE)/2; ++j)                       \
+    for (j = 0; j < WORDS(STORM_R)/2; ++j)                    \
     {                                                         \
         STOREU(BLOCK + j * 2 * BYTES(STORM_W), S[j]);         \
     }                                                         \
     memcpy(BLOCK, IN, INLEN);                                 \
-    for (j = 0; j < WORDS(RATE)/2; ++j)                       \
+    for (j = 0; j < WORDS(STORM_R)/2; ++j)                    \
     {                                                         \
         uint64x2_t T = LOADU(BLOCK + j * 2 * BYTES(STORM_W)); \
         STOREU(BLOCK + j * 2 * BYTES(STORM_W), XOR(S[j], T)); \
@@ -216,18 +216,18 @@ do                                                            \
     memcpy(OUT, BLOCK, INLEN);                                \
 } while(0)
 
-#define INIT(S, KEY, IV, IVLEN, TAG)                         \
-do {                                                         \
-    size_t j;                                                \
-    memset(S, 0, 8 * sizeof(uint64x2_t));                    \
-    for (j = 0; j < IVLEN; ++j)                              \
-    {                                                        \
-        S[j] = LOADU(IV + j * 2 * BYTES(STORM_W));           \
-    }                                                        \
-    S[4] = COMB(vcreate_u64(STORM_W), vcreate_u64(STORM_R)); \
-    S[5] = COMB(vcreate_u64(STORM_T), vcreate_u64(TAG));     \
-    S[6] = LOADU(KEY + 0 * 2 * BYTES(STORM_W));              \
-    S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));              \
+#define INIT(S, KEY, IV, IVLEN, TAG)                     \
+do {                                                     \
+    size_t j;                                            \
+    memset(S, 0, 8 * sizeof(uint64x2_t));                \
+    for (j = 0; j < IVLEN; ++j)                          \
+    {                                                    \
+        S[j] = LOADU(IV + j * 2 * BYTES(STORM_W));       \
+    }                                                    \
+    S[4] = COMB(vcreate_u64(0), vcreate_u64(STORM_L));   \
+    S[5] = COMB(vcreate_u64(STORM_T), vcreate_u64(TAG)); \
+    S[6] = LOADU(KEY + 0 * 2 * BYTES(STORM_W));          \
+    S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));          \
 } while(0)
 
 #define ABSORB_DATA(S, IN, INLEN)                 \
@@ -251,10 +251,10 @@ do                                                \
 {                                                 \
    size_t i = 0;                                  \
    size_t l = INLEN;                              \
-   while (l >= BYTES(RATE))                       \
+   while (l >= BYTES(STORM_R))                    \
    {                                              \
        ENCRYPT_BLOCK(S, OUT + i, IN + i);         \
-       i += BYTES(RATE); l -= BYTES(RATE);        \
+       i += BYTES(STORM_R); l -= BYTES(STORM_R);  \
    }                                              \
     if (l > 0)                                    \
     {                                             \
@@ -267,10 +267,10 @@ do                                                \
 {                                                 \
     size_t i = 0;                                 \
     size_t l = INLEN;                             \
-    while (l >= BYTES(RATE))                      \
+    while (l >= BYTES(STORM_R))                   \
     {                                             \
         DECRYPT_BLOCK(S, OUT + i, IN + i);        \
-        i += BYTES(RATE); l -= BYTES(RATE);       \
+        i += BYTES(STORM_R); l -= BYTES(STORM_R); \
     }                                             \
     if (l > 0)                                    \
     {                                             \

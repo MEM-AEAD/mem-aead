@@ -31,7 +31,7 @@
 
 #define V1_PERMUTE_F(B) do {           \
   int i;                               \
-  for(i = 0; i < STORM_R; ++i) {       \
+  for(i = 0; i < STORM_L; ++i) {       \
     V1_G_F(B[0], B[1], B[2], B[3]);    \
     V1_DIAG_F(B[0], B[1], B[2], B[3]); \
     V1_G_F(B[0], B[1], B[2], B[3]);    \
@@ -41,7 +41,7 @@
 
 #define V1_PERMUTE_B(B) do {           \
   int i;                               \
-  for(i = 0; i < STORM_R; ++i) {       \
+  for(i = 0; i < STORM_L; ++i) {       \
     V1_DIAG_F(B[0], B[1], B[2], B[3]); \
     V1_G_B(B[0], B[1], B[2], B[3]);    \
     V1_DIAG_B(B[0], B[1], B[2], B[3]); \

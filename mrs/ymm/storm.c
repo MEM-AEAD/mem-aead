@@ -7,7 +7,7 @@
 #include <immintrin.h>
 
 #define STORM_W 64
-#define STORM_R 4
+#define STORM_L 4
 #define STORM_T (STORM_W *  4)
 #define STORM_B (STORM_W * 16)
 #define STORM_C (STORM_W *  4)
@@ -25,14 +25,14 @@
 static void storm_init_abs(__m256i B[4], const uint8_t * k, const uint8_t * n) {
   B[0] = _mm256_castsi128_si256(LOADU128(n));
   B[1] = _mm256_setzero_si256();
-  B[2] = _mm256_set_epi64x(0, STORM_T, STORM_R, STORM_W);
+  B[2] = _mm256_set_epi64x(0, STORM_T, STORM_L, 0);
   B[3] = LOADU256(k);
 }
 
 static void storm_init_enc(__m256i B[4], const uint8_t * k, const uint8_t * n) {
   B[0] = LOADU256(n);
   B[1] = _mm256_setzero_si256();
-  B[2] = _mm256_set_epi64x(1, STORM_T, STORM_R, STORM_W);
+  B[2] = _mm256_set_epi64x(1, STORM_T, STORM_L, 0);
   B[3] = LOADU256(k);
 }
 

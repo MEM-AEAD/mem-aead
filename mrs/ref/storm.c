@@ -49,7 +49,7 @@ static STORM_INLINE void storm_permute(storm_state_t state)
 {
     size_t i;
     storm_word_t * S = state->S;
-    for(i = 0; i < STORM_R; ++i)
+    for(i = 0; i < STORM_L; ++i)
     {
         F(S);
     }
@@ -94,7 +94,7 @@ static STORM_INLINE void storm_encrypt_block(storm_state_t state, unsigned char 
     size_t i;
     storm_word_t * S = state->S;
     storm_permute(state);
-    for (i = 0; i < WORDS(RATE); ++i)
+    for (i = 0; i < WORDS(STORM_R); ++i)
     {
         S[i] ^= LOAD(in + i * BYTES(STORM_W));
         STORE(out + i * BYTES(STORM_W), S[i]);
@@ -102,7 +102,7 @@ static STORM_INLINE void storm_encrypt_block(storm_state_t state, unsigned char 
 
 #if defined(STORM_DEBUG)
     printf("ENCRYPTING BLOCK:\n");
-    print_bytes(in, BYTES(RATE));
+    print_bytes(in, BYTES(STORM_R));
     printf("STATE:\n");
     print_state(state);
 #endif
@@ -110,11 +110,11 @@ static STORM_INLINE void storm_encrypt_block(storm_state_t state, unsigned char 
 
 static STORM_INLINE void storm_encrypt_lastblock(storm_state_t state, unsigned char * out, const unsigned char * in, size_t inlen)
 {
-    uint8_t lastblock[BYTES(RATE)];
+    uint8_t lastblock[BYTES(STORM_R)];
     storm_pad(lastblock, sizeof lastblock, in, inlen);
     storm_encrypt_block(state, lastblock, lastblock);
     memcpy(out, lastblock, inlen);
-    burn(lastblock, 0, BYTES(RATE));
+    burn(lastblock, 0, BYTES(STORM_R));
 }
 
 static STORM_INLINE void storm_decrypt_block(storm_state_t state, unsigned char * out, const unsigned char * in)
@@ -122,7 +122,7 @@ static STORM_INLINE void storm_decrypt_block(storm_state_t state, unsigned char 
     size_t i;
     storm_word_t * S = state->S;
     storm_permute(state);
-    for (i = 0; i < WORDS(RATE); ++i)
+    for (i = 0; i < WORDS(STORM_R); ++i)
     {
         const storm_word_t c = LOAD(in + i * BYTES(STORM_W));
         STORE(out + i * BYTES(STORM_W), S[i] ^ c);
@@ -131,7 +131,7 @@ static STORM_INLINE void storm_decrypt_block(storm_state_t state, unsigned char 
 
 #if defined(STORM_DEBUG)
     printf("DECRYPTING BLOCK:\n");
-    print_bytes(in, BYTES(RATE));
+    print_bytes(in, BYTES(STORM_R));
     printf("STATE:\n");
     print_state(state);
 #endif
@@ -141,9 +141,9 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, unsigned c
 {
     size_t i;
     storm_word_t * S = state->S;
-    uint8_t lastblock[BYTES(RATE)];
+    uint8_t lastblock[BYTES(STORM_R)];
     storm_permute(state);
-    for(i = 0; i < WORDS(RATE); ++i)
+    for(i = 0; i < WORDS(STORM_R); ++i)
     {
         STORE(lastblock + i * BYTES(STORM_W), S[i]);
     }
@@ -151,9 +151,9 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, unsigned c
     /* undo padding */
     memcpy(lastblock, in, inlen);
     /*lastblock[inlen] ^= 0x01;
-    lastblock[BYTES(RATE) - 1] ^= 0x80;*/
+    lastblock[BYTES(STORM_R) - 1] ^= 0x80;*/
 
-    for (i = 0; i < WORDS(RATE); ++i)
+    for (i = 0; i < WORDS(STORM_R); ++i)
     {
         const storm_word_t c = LOAD(lastblock + i * BYTES(STORM_W));
         STORE(lastblock + i * BYTES(STORM_W), S[i] ^ c);
@@ -163,7 +163,7 @@ static STORM_INLINE void storm_decrypt_lastblock(storm_state_t state, unsigned c
 
 #if defined(STORM_DEBUG)
     printf("DECRYPTING LASTBLOCK:\n");
-    print_bytes(lastblock, BYTES(RATE));
+    print_bytes(lastblock, BYTES(STORM_R));
     printf("STATE:\n");
     print_state(state);
 #endif
@@ -181,8 +181,7 @@ void storm_init(storm_state_t state, const unsigned char * k, const unsigned cha
     {
         S[i] = LOAD(iv + i * BYTES(STORM_W));
     }
-    S[ 8] = STORM_W;
-    S[ 9] = STORM_R;
+    S[ 9] = STORM_L;
     S[10] = STORM_T;
     S[11] = tag;
 
@@ -213,12 +212,12 @@ void storm_absorb_data(storm_state_t state, const unsigned char * in, size_t inl
 void storm_encrypt_data(storm_state_t state, unsigned char * out, const unsigned char * in, size_t inlen)
 {
 
-    while (inlen >= BYTES(RATE))
+    while (inlen >= BYTES(STORM_R))
     {
         storm_encrypt_block(state, out, in);
-        inlen -= BYTES(RATE);
-        in    += BYTES(RATE);
-        out   += BYTES(RATE);
+        inlen -= BYTES(STORM_R);
+        in    += BYTES(STORM_R);
+        out   += BYTES(STORM_R);
     }
     if(inlen > 0) {
         storm_encrypt_lastblock(state, out, in, inlen);
@@ -227,12 +226,12 @@ void storm_encrypt_data(storm_state_t state, unsigned char * out, const unsigned
 
 void storm_decrypt_data(storm_state_t state, unsigned char * out, const unsigned char * in, size_t inlen)
 {
-    while (inlen >= BYTES(RATE))
+    while (inlen >= BYTES(STORM_R))
     {
         storm_decrypt_block(state, out, in);
-        inlen -= BYTES(RATE);
-        in    += BYTES(RATE);
-        out   += BYTES(RATE);
+        inlen -= BYTES(STORM_R);
+        in    += BYTES(STORM_R);
+        out   += BYTES(STORM_R);
     }
     if(inlen > 0) {
         storm_decrypt_lastblock(state, out, in, inlen);
@@ -242,7 +241,7 @@ void storm_decrypt_data(storm_state_t state, unsigned char * out, const unsigned
 void storm_finalise(storm_state_t state, size_t hlen, size_t mlen, unsigned char * tag)
 {
     storm_word_t * S = state->S;
-    uint8_t lastblock[BYTES(RATE)];
+    uint8_t lastblock[BYTES(STORM_R)];
     size_t i;
 
     /* finalise state */
@@ -254,7 +253,7 @@ void storm_finalise(storm_state_t state, size_t hlen, size_t mlen, unsigned char
     storm_permute(state);
 
     /* extract tag */
-    for (i = 0; i < WORDS(RATE); ++i)
+    for (i = 0; i < WORDS(STORM_R); ++i)
     {
         STORE(lastblock + i * BYTES(STORM_W), S[i]);
     }
@@ -265,7 +264,7 @@ void storm_finalise(storm_state_t state, size_t hlen, size_t mlen, unsigned char
     print_state(state);
 #endif
 
-    burn(lastblock, 0, BYTES(RATE));
+    burn(lastblock, 0, BYTES(STORM_R));
 }
 
 int storm_verify_tag(const unsigned char * tag1, const unsigned char * tag2)

@@ -19,14 +19,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STORM_W 64               /* word size */
-#define STORM_R 4                /* round number */
-#define STORM_T (STORM_W *  4)   /* tag size */
-#define STORM_N (STORM_W *  2)   /* nonce size */
-#define STORM_K (STORM_W *  4)   /* key size */
-#define STORM_B (STORM_W * 16)   /* permutation width */
-#define STORM_C (STORM_W *  4)   /* capacity */
-#define RATE (STORM_B - STORM_C) /* rate */
+#define STORM_W 64                  /* word size */
+#define STORM_L 4                   /* round number */
+#define STORM_T (STORM_W *  4)      /* tag size */
+#define STORM_N (STORM_W *  2)      /* nonce size */
+#define STORM_K (STORM_W *  4)      /* key size */
+#define STORM_B (STORM_W * 16)      /* permutation width */
+#define STORM_C (STORM_W *  4)      /* capacity */
+#define STORM_R (STORM_B - STORM_C) /* rate */
 
 typedef uint64_t storm_word_t;
 
@@ -134,11 +134,6 @@ static void print_bytes(const uint8_t * in, size_t inlen)
     printf("\n");
 }
 #endif
-
-
-
-
-
 
 /* high-level operations */
 void storm_aead_encrypt(

@@ -19,7 +19,7 @@
 
 #define V4_PERMUTE_F(B) do {            \
   int i;                                \
-  for(i = 0; i < STORM_R; ++i) {        \
+  for(i = 0; i < STORM_L; ++i) {        \
     /* Column step */                   \
     V4_G_F(B[ 0], B[ 4], B[ 8], B[12]); \
     V4_G_F(B[ 1], B[ 5], B[ 9], B[13]); \
@@ -35,7 +35,7 @@
 
 #define V4_PERMUTE_B(B) do {            \
   int i;                                \
-  for(i = 0; i < STORM_R; ++i) {        \
+  for(i = 0; i < STORM_L; ++i) {        \
     /* Diagonal step */                 \
     V4_G_B(B[ 0], B[ 5], B[10], B[15]); \
     V4_G_B(B[ 1], B[ 6], B[11], B[12]); \
