@@ -439,7 +439,7 @@ int storm_aead_decrypt(
 
     *mlen = clen - BYTES(STORM_T);
 
-    /* set first 2 state words temporarily to received tag */
+    /* store received tag temporarily in the first 2 state words */
     S[0] = LOADU(c + *mlen);
     S[1] = LOADU(c + *mlen + BYTES(STORM_T)/2);
 
