@@ -39,6 +39,7 @@
 #define AND(A, B) _mm_and_si128((A), (B))
 #define ADD(A, B) _mm_add_epi64((A), (B))
 #define SUB(A, B) _mm_sub_epi64((A), (B))
+#define ZERO _mm_setzero_si128()
 
 /* constants for ROTR */
 #define R0 32
@@ -240,10 +241,10 @@ do                                      \
 do                                           \
 {                                            \
     L[0] = LOADU(NONCE + 0);                 \
-    L[1] = _mm_set_epi64x(0,0);              \
-    L[2] = _mm_set_epi64x(0,0);              \
-    L[3] = _mm_set_epi64x(0,0);              \
-    L[4] = _mm_set_epi64x(0,0);              \
+    L[1] = ZERO;                             \
+    L[2] = ZERO;                             \
+    L[3] = ZERO;                             \
+    L[4] = ZERO;                             \
     L[5] = _mm_set_epi64x(STORM_T, STORM_L); \
     L[6] = LOADU(KEY +  0);                  \
     L[7] = LOADU(KEY + 16);                  \
@@ -606,7 +607,6 @@ int storm_aead_decrypt(
     __m128i SE[8] = {0};
     __m128i LA[8] = {0};
     __m128i LE[8] = {0};
-    __m128i T[2] = {0};
 
     if (clen < BYTES(STORM_T)) { return result; }
 
@@ -625,9 +625,9 @@ int storm_aead_decrypt(
     FINALISE(SA, SE, LA, hlen, *mlen);
 
     /* verify tag */
-    T[0] = _mm_cmpeq_epi8(SA[0], LOADU(c + clen - BYTES(STORM_T)  ));
-    T[1] = _mm_cmpeq_epi8(SA[1], LOADU(c + clen - BYTES(STORM_T)/2));
-    result = (((_mm_movemask_epi8(AND(T[0], T[1])) & 0xFFFFUL) + 1) >> 16) - 1;
+    SA[0] = _mm_cmpeq_epi8(SA[0], LOADU(c + clen - BYTES(STORM_T)  ));
+    SA[1] = _mm_cmpeq_epi8(SA[1], LOADU(c + clen - BYTES(STORM_T)/2));
+    result = (((_mm_movemask_epi8(AND(SA[0], SA[1])) & 0xFFFFUL) + 1) >> 16) - 1;
 
     /* burn decrypted plaintext on authentication failure */
     if (result != 0) { burn(m, 0, *mlen); }
