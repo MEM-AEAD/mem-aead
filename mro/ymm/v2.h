@@ -1,5 +1,5 @@
-#ifndef STORM_OPP_YMM_V2_H
-#define STORM_OPP_YMM_V2_H
+#ifndef MRO_YMM_V2_H
+#define MRO_YMM_V2_H
 
 #include "v0.h"
 
@@ -19,7 +19,7 @@
 
 #define V2_PERMUTE_F(B) do {            \
   int i;                                \
-  for(i = 0; i < STORM_R; ++i) {        \
+  for(i = 0; i < MRO_L; ++i) {          \
     /* Column step */                   \
     V2_G_F(B[ 0], B[ 4], B[ 8], B[12]); \
     V2_G_F(B[ 1], B[ 5], B[ 9], B[13]); \
@@ -35,7 +35,7 @@
 
 #define V2_PERMUTE_B(B) do {            \
   int i;                                \
-  for(i = 0; i < STORM_R; ++i) {        \
+  for(i = 0; i < MRO_L; ++i) {          \
     /* Diagonal step */                 \
     V2_G_B(B[ 0], B[ 5], B[10], B[15]); \
     V2_G_B(B[ 1], B[ 6], B[11], B[12]); \

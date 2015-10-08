@@ -1,12 +1,12 @@
-#ifndef STORM_OPP_YMM_V0_H
-#define STORM_OPP_YMM_V0_H
+#ifndef MRO_YMM_V0_H
+#define MRO_YMM_V0_H
 
 #include <stdint.h>
 #include <string.h>
 #include <immintrin.h>
 
 #define BYTES(X) (((X) + 7) / 8)
-#define WORDS(X) (((X) + (STORM_W - 1)) / STORM_W)
+#define WORDS(X) (((X) + (MRO_W - 1)) / MRO_W)
 
 #define ADD256(A, B) _mm256_add_epi64((A), (B))
 #define SUB256(A, B) _mm256_sub_epi64((A), (B))

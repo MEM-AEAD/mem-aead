@@ -1,5 +1,5 @@
-#ifndef OPP_H
-#define OPP_H
+#ifndef OPP_NEON_H
+#define OPP_NEON_H
 
 #include <stddef.h>
 #include <stdint.h>

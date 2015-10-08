@@ -1,5 +1,5 @@
-#ifndef STORM_OPP_YMM_V4_H
-#define STORM_OPP_YMM_V4_H
+#ifndef MRO_YMM_V4_H
+#define MRO_YMM_V4_H
 
 #include "v0.h"
 
@@ -19,7 +19,7 @@
 
 #define V4_PERMUTE_F(B) do {            \
   int i;                                \
-  for(i = 0; i < STORM_R; ++i) {        \
+  for(i = 0; i < MRO_L; ++i) {          \
     /* Column step */                   \
     V4_G_F(B[ 0], B[ 4], B[ 8], B[12]); \
     V4_G_F(B[ 1], B[ 5], B[ 9], B[13]); \
@@ -35,7 +35,7 @@
 
 #define V4_PERMUTE_B(B) do {            \
   int i;                                \
-  for(i = 0; i < STORM_R; ++i) {        \
+  for(i = 0; i < MRO_L; ++i) {          \
     /* Diagonal step */                 \
     V4_G_B(B[ 0], B[ 5], B[10], B[15]); \
     V4_G_B(B[ 1], B[ 6], B[11], B[12]); \
@@ -153,19 +153,19 @@
   }                                 \
 } while(0)
 
-#define V4_PHI_UPDATE_1(L) do {                           \
+#define V4_ALPHA_UPDATE_1(L) do {                         \
   STOREU256(&L[16], XOR256(ROT256(LOADU256(&L[0]), 11),   \
                            SHL256(LOADU256(&L[5]), 13))); \
 } while(0)
 
-#define V4_PHI_UPDATE_2(L) do {        \
+#define V4_ALPHA_UPDATE_2(L) do {      \
   STOREU256(&L[ 0], LOADU256(&L[ 4])); \
   STOREU256(&L[ 4], LOADU256(&L[ 8])); \
   STOREU256(&L[ 8], LOADU256(&L[12])); \
   STOREU256(&L[12], LOADU256(&L[16])); \
 } while(0)
 
-#define V4_PHI_UPDATE(L) do {                             \
+#define V4_ALPHA_UPDATE(L) do {                           \
   STOREU256(&L[ 0], LOADU256(&L[ 4]));                    \
   STOREU256(&L[ 4], LOADU256(&L[ 8]));                    \
   STOREU256(&L[ 8], LOADU256(&L[12]));                    \

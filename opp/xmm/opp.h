@@ -1,5 +1,5 @@
-#ifndef OPP_H
-#define OPP_H
+#ifndef OPP_XMM_H
+#define OPP_XMM_H
 
 #include <stddef.h>
 #include <stdint.h>
