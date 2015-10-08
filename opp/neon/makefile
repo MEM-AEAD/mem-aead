@@ -3,16 +3,16 @@ CFLAGS=-O3 -mcpu=cortex-a8 -mfpu=neon -std=c99 -Wall -Wextra -pedantic -Wno-long
 all: check bench
 
 debug:
-	@$(CC) $(CFLAGS) -o debug ../../utils/debug.c storm.c
+	@$(CC) $(CFLAGS) -o debug ../../utils/debug.c opp.c api.c
 	@./debug
 	@rm debug
 
 bench:
-	@$(CC) $(CFLAGS) -o bench ../../utils/bench.c storm.c
+	@$(CC) $(CFLAGS) -o bench ../../utils/bench.c opp.c api.c
 	@./bench
 	@rm bench
 
 check:
-	@$(CC) $(CFLAGS) -I../ -o check ../../utils/check.c storm.c
+	@$(CC) $(CFLAGS) -I../ -o check ../../utils/check.c opp.c api.c
 	@./check
 	@rm check

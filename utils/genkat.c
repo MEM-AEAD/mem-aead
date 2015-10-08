@@ -1,27 +1,14 @@
-/*
-   STORM reference source code package - reference C implementations
-
-   Written in 2014 by Samuel Neves <sneves@dei.uc.pt>
-   Modified in 2015 by Philipp Jovanovic <philipp@jovanovic.io>
-
-   To the extent possible under law, the author(s) have dedicated all copyright
-   and related and neighboring rights to this software to the public domain
-   worldwide. This software is distributed without any warranty.
-
-   You should have received a copy of the CC0 Public Domain Dedication along with
-   this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
-*/
 #include <string.h>
 #include <stdio.h>
 
-void storm_aead_encrypt(
+void aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *p, size_t plen,
         const unsigned char *nonce,
         const unsigned char *key);
 
-int storm_aead_decrypt(
+int aead_decrypt(
         unsigned char *p, size_t *plen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
@@ -67,7 +54,7 @@ static void genkat(void)
 		clen = 0;
 		mlen = hlen = i;
 
-		storm_aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
+		aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
 
 		for(j = 0; j < clen; ++j)
 			printf("0x%02X%s", c[j], (j + 1 == clen) ? "" : (7 == j%8) ? ",\n" : ", ");
