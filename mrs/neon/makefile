@@ -2,6 +2,11 @@ CFLAGS=-O3 -mcpu=cortex-a8 -mfpu=neon -std=c99 -Wall -Wextra -pedantic -Wno-long
 
 all: check bench
 
+debug:
+	@$(CC) $(CFLAGS) -o debug ../../utils/debug.c ../../utils/io.c mrs.c
+	@./debug
+	@rm debug
+
 bench:
 	@$(CC) $(CFLAGS) -o bench ../../utils/bench.c mrs.c
 	@./bench
