@@ -1,14 +1,14 @@
 #include <string.h>
 #include <stdio.h>
 
-void aead_encrypt(
+void crypto_aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *p, size_t plen,
         const unsigned char *nonce,
         const unsigned char *key);
 
-int aead_decrypt(
+int crypto_aead_decrypt(
         unsigned char *p, size_t *plen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
@@ -54,7 +54,7 @@ static void genkat(void)
 		clen = 0;
 		mlen = hlen = i;
 
-		aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
+		crypto_aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
 
 		for(j = 0; j < clen; ++j)
 			printf("0x%02X%s", c[j], (j + 1 == clen) ? "" : (7 == j%8) ? ",\n" : ", ");

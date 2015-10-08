@@ -4,14 +4,14 @@
 #include <string.h>
 #include <unistd.h>
 
-void aead_encrypt(
+void crypto_aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *p, size_t plen,
         const unsigned char *nonce,
         const unsigned char *key);
 
-int aead_decrypt(
+int crypto_aead_decrypt(
         unsigned char *p, size_t *plen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
@@ -139,7 +139,7 @@ void bench()
     for( i = 0; i <= BENCH_TRIALS; ++i )
     {
       cycles[i] = cpucycles();
-      aead_encrypt(out, &outlen, ad, adlen, in, j, n, k);
+      crypto_aead_encrypt(out, &outlen, ad, adlen, in, j, n, k);
     }
 
     for( i = 0; i < BENCH_TRIALS; ++i )

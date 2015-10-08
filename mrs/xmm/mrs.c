@@ -1,18 +1,6 @@
-/*
-   STORM reference source code package - reference C implementations
-
-   Written in 2015 by Philipp Jovanovic <philipp@jovanovic.io>
-
-   To the extent possible under law, the author(s) have dedicated all copyright
-   and related and neighboring rights to this software to the public domain
-   worldwide. This software is distributed without any warranty.
-
-   You should have received a copy of the CC0 Public Domain Dedication along with
-   this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
-*/
 #include <string.h>
 #include <stdio.h>
-#include "storm.h"
+#include "mrs.h"
 
 #if defined(_MSC_VER)
     #include <intrin.h>
@@ -20,17 +8,17 @@
     #include <x86intrin.h>
 #endif
 
-#define STORM_W 64                  /* word size */
-#define STORM_L 4                   /* round number */
-#define STORM_T (STORM_W *  4)      /* tag size */
-#define STORM_N (STORM_W *  2)      /* nonce size */
-#define STORM_K (STORM_W *  4)      /* key size */
-#define STORM_B (STORM_W * 16)      /* permutation width */
-#define STORM_C (STORM_W *  4)      /* capacity */
-#define STORM_R (STORM_B - STORM_C) /* rate */
+#define MRS_W 64              /* word size */
+#define MRS_L 4               /* round number */
+#define MRS_T (MRS_W *  4)    /* tag size */
+#define MRS_N (MRS_W *  2)    /* nonce size */
+#define MRS_K (MRS_W *  4)    /* key size */
+#define MRS_B (MRS_W * 16)    /* permutation width */
+#define MRS_C (MRS_W *  4)    /* capacity */
+#define MRS_R (MRS_B - MRS_C) /* rate */
 
 #define BYTES(x) (((x) + 7) / 8)
-#define WORDS(x) (((x) + (STORM_W-1)) / STORM_W)
+#define WORDS(x) (((x) + (MRS_W-1)) / MRS_W)
 
 #if defined(_MSC_VER)
     #define ALIGN(x) __declspec(align(x))
@@ -171,14 +159,14 @@ do                    \
     UNDIAGONALIZE(S); \
 } while(0)
 
-#define PERMUTE(S)               \
-do                               \
-{                                \
-    int r;                       \
-    for(r = 0; r < STORM_L; ++r) \
-    {                            \
-        F(S);                    \
-    }                            \
+#define PERMUTE(S)             \
+do                             \
+{                              \
+    int r;                     \
+    for(r = 0; r < MRS_L; ++r) \
+    {                          \
+        F(S);                  \
+    }                          \
 } while(0)
 
 #define PAD(OUT, OUTLEN, IN, INLEN) \
@@ -188,109 +176,109 @@ do                                  \
     memcpy(OUT, IN, INLEN);         \
 } while(0)
 
-#define ABSORB_BLOCK(S, IN)                                   \
-do                                                            \
-{                                                             \
-    size_t j;                                                 \
-    PERMUTE(S);                                               \
-    for (j = 0; j < WORDS(STORM_B)/2; ++j)                    \
-    {                                                         \
-        S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(STORM_W))); \
-    }                                                         \
-} while(0)
-
-
-#define ABSORB_LASTBLOCK(S, IN, INLEN)                 \
-do                                                     \
-{                                                      \
-    ALIGN(64) unsigned char lastblock[BYTES(STORM_B)]; \
-    PAD(lastblock, sizeof lastblock, IN, INLEN);       \
-    ABSORB_BLOCK(S, lastblock);                        \
-} while(0)
-
-#define ENCRYPT_BLOCK(S, OUT, IN)                             \
-do                                                            \
-{                                                             \
-    size_t j;                                                 \
-    PERMUTE(S);                                               \
-    for (j = 0; j < WORDS(STORM_R)/2; ++j)                    \
-    {                                                         \
-        S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(STORM_W))); \
-        STOREU(OUT + j * 2 * BYTES(STORM_W), S[j]);           \
-    }                                                         \
-} while(0)
-
-#define ENCRYPT_LASTBLOCK(S, OUT, IN, INLEN)           \
-do                                                     \
-{                                                      \
-    ALIGN(64) unsigned char lastblock[BYTES(STORM_R)]; \
-    PAD(lastblock, sizeof lastblock, IN, INLEN);       \
-    ENCRYPT_BLOCK(S, lastblock, lastblock);            \
-    memcpy(OUT, lastblock, INLEN);                     \
-} while(0)
-
-#define DECRYPT_BLOCK(S, OUT, IN)                           \
+#define ABSORB_BLOCK(S, IN)                                 \
 do                                                          \
 {                                                           \
     size_t j;                                               \
     PERMUTE(S);                                             \
-    for (j = 0; j < WORDS(STORM_R)/2; ++j)                  \
+    for (j = 0; j < WORDS(MRS_B)/2; ++j)                    \
     {                                                       \
-        __m128i T = LOADU(IN + j * 2 * BYTES(STORM_W));     \
-        STOREU(OUT + j * 2 * BYTES(STORM_W), XOR(S[j], T)); \
-        S[j] = T;                                           \
+        S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(MRS_W))); \
     }                                                       \
 } while(0)
 
-#define DECRYPT_LASTBLOCK(S, OUT, IN, INLEN)                      \
-do                                                                \
-{                                                                 \
-    size_t j;                                                     \
-    ALIGN(64) unsigned char lastblock[BYTES(STORM_R)];            \
-    PERMUTE(S);                                                   \
-    for (j = 0; j < WORDS(STORM_R)/2; ++j)                        \
-    {                                                             \
-        STOREU(lastblock + j * 2 * BYTES(STORM_W), S[j]);         \
-    }                                                             \
-    memcpy(lastblock, IN, INLEN);                                 \
-    for (j = 0; j < WORDS(STORM_R)/2; ++j)                        \
-    {                                                             \
-        __m128i T = LOADU(lastblock + j * 2 * BYTES(STORM_W));    \
-        STOREU(lastblock + j * 2 * BYTES(STORM_W), XOR(S[j], T)); \
-        S[j] = T;                                                 \
-    }                                                             \
-    memcpy(OUT, lastblock, INLEN);                                \
+
+#define ABSORB_LASTBLOCK(S, IN, INLEN)               \
+do                                                   \
+{                                                    \
+    ALIGN(64) unsigned char lastblock[BYTES(MRS_B)]; \
+    PAD(lastblock, sizeof lastblock, IN, INLEN);     \
+    ABSORB_BLOCK(S, lastblock);                      \
 } while(0)
 
-#define INIT(S, KEY, IV, IVLEN, TAG)               \
-do                                                 \
-{                                                  \
-    size_t j;                                      \
-    memset(S, 0,  8 * sizeof(__m128i));            \
-    for (j = 0; j < IVLEN; ++j)                    \
-    {                                              \
-        S[j] = LOADU(IV + j * 2 * BYTES(STORM_W)); \
-    }                                              \
-    S[4] = _mm_set_epi64x(STORM_L, 0);             \
-    S[5] = _mm_set_epi64x(TAG, STORM_T);           \
-    S[6] = LOADU(KEY + 0 * 2 * BYTES(STORM_W));    \
-    S[7] = LOADU(KEY + 1 * 2 * BYTES(STORM_W));    \
+#define ENCRYPT_BLOCK(S, OUT, IN)                           \
+do                                                          \
+{                                                           \
+    size_t j;                                               \
+    PERMUTE(S);                                             \
+    for (j = 0; j < WORDS(MRS_R)/2; ++j)                    \
+    {                                                       \
+        S[j] = XOR(S[j], LOADU(IN + j * 2 * BYTES(MRS_W))); \
+        STOREU(OUT + j * 2 * BYTES(MRS_W), S[j]);           \
+    }                                                       \
 } while(0)
 
-#define ABSORB_DATA(S, IN, INLEN)                 \
-do                                                \
-{                                                 \
-    size_t i = 0;                                 \
-    size_t l = INLEN;                             \
-    while (l >= BYTES(STORM_B))                   \
-    {                                             \
-        ABSORB_BLOCK(S, IN + i);                  \
-        i += BYTES(STORM_B); l -= BYTES(STORM_B); \
-    }                                             \
-    if (l > 0)                                    \
-    {                                             \
-        ABSORB_LASTBLOCK(S, IN + i, l);           \
-    }                                             \
+#define ENCRYPT_LASTBLOCK(S, OUT, IN, INLEN)         \
+do                                                   \
+{                                                    \
+    ALIGN(64) unsigned char lastblock[BYTES(MRS_R)]; \
+    PAD(lastblock, sizeof lastblock, IN, INLEN);     \
+    ENCRYPT_BLOCK(S, lastblock, lastblock);          \
+    memcpy(OUT, lastblock, INLEN);                   \
+} while(0)
+
+#define DECRYPT_BLOCK(S, OUT, IN)                         \
+do                                                        \
+{                                                         \
+    size_t j;                                             \
+    PERMUTE(S);                                           \
+    for (j = 0; j < WORDS(MRS_R)/2; ++j)                  \
+    {                                                     \
+        __m128i T = LOADU(IN + j * 2 * BYTES(MRS_W));     \
+        STOREU(OUT + j * 2 * BYTES(MRS_W), XOR(S[j], T)); \
+        S[j] = T;                                         \
+    }                                                     \
+} while(0)
+
+#define DECRYPT_LASTBLOCK(S, OUT, IN, INLEN)                    \
+do                                                              \
+{                                                               \
+    size_t j;                                                   \
+    ALIGN(64) unsigned char lastblock[BYTES(MRS_R)];            \
+    PERMUTE(S);                                                 \
+    for (j = 0; j < WORDS(MRS_R)/2; ++j)                        \
+    {                                                           \
+        STOREU(lastblock + j * 2 * BYTES(MRS_W), S[j]);         \
+    }                                                           \
+    memcpy(lastblock, IN, INLEN);                               \
+    for (j = 0; j < WORDS(MRS_R)/2; ++j)                        \
+    {                                                           \
+        __m128i T = LOADU(lastblock + j * 2 * BYTES(MRS_W));    \
+        STOREU(lastblock + j * 2 * BYTES(MRS_W), XOR(S[j], T)); \
+        S[j] = T;                                               \
+    }                                                           \
+    memcpy(OUT, lastblock, INLEN);                              \
+} while(0)
+
+#define INIT(S, KEY, IV, IVLEN, TAG)             \
+do                                               \
+{                                                \
+    size_t j;                                    \
+    memset(S, 0,  8 * sizeof(__m128i));          \
+    for (j = 0; j < IVLEN; ++j)                  \
+    {                                            \
+        S[j] = LOADU(IV + j * 2 * BYTES(MRS_W)); \
+    }                                            \
+    S[4] = _mm_set_epi64x(MRS_L, 0);             \
+    S[5] = _mm_set_epi64x(TAG, MRS_T);           \
+    S[6] = LOADU(KEY + 0 * 2 * BYTES(MRS_W));    \
+    S[7] = LOADU(KEY + 1 * 2 * BYTES(MRS_W));    \
+} while(0)
+
+#define ABSORB_DATA(S, IN, INLEN)             \
+do                                            \
+{                                             \
+    size_t i = 0;                             \
+    size_t l = INLEN;                         \
+    while (l >= BYTES(MRS_B))                 \
+    {                                         \
+        ABSORB_BLOCK(S, IN + i);              \
+        i += BYTES(MRS_B); l -= BYTES(MRS_B); \
+    }                                         \
+    if (l > 0)                                \
+    {                                         \
+        ABSORB_LASTBLOCK(S, IN + i, l);       \
+    }                                         \
 } while(0)
 
 #define ENCRYPT_DATA(S, OUT, IN, INLEN)           \
@@ -298,10 +286,10 @@ do                                                \
 {                                                 \
     size_t i = 0;                                 \
     size_t l = INLEN;                             \
-    while (l >= BYTES(STORM_R))                   \
+    while (l >= BYTES(MRS_R))                     \
     {                                             \
         ENCRYPT_BLOCK(S, OUT + i, IN + i);        \
-        i += BYTES(STORM_R); l -= BYTES(STORM_R); \
+        i += BYTES(MRS_R); l -= BYTES(MRS_R);     \
     }                                             \
     if (l > 0)                                    \
     {                                             \
@@ -314,10 +302,10 @@ do                                                \
 {                                                 \
     size_t i = 0;                                 \
     size_t l = INLEN;                             \
-    while (l >= BYTES(STORM_R))                   \
+    while (l >= BYTES(MRS_R))                     \
     {                                             \
         DECRYPT_BLOCK(S, OUT + i, IN + i);        \
-        i += BYTES(STORM_R), l -= BYTES(STORM_R); \
+        i += BYTES(MRS_R), l -= BYTES(MRS_R);     \
     }                                             \
     if (l > 0)                                    \
     {                                             \
@@ -331,8 +319,8 @@ do                                                \
     PERMUTE(S);                                   \
     S[0] = XOR(S[0], _mm_set_epi64x(MLEN, HLEN)); \
     PERMUTE(S);                                   \
-    STOREU(TAG,                    S[0]);         \
-    STOREU(TAG + BYTES(STORM_T)/2, S[1]);         \
+    STOREU(TAG,                  S[0]);           \
+    STOREU(TAG + BYTES(MRS_T)/2, S[1]);           \
 } while(0)
 
 typedef enum tag__
@@ -343,7 +331,7 @@ typedef enum tag__
 
 static void* (* const volatile burn)(void*, int, size_t) = memset;
 
-void storm_aead_encrypt(
+void crypto_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *m, size_t mlen,
@@ -354,18 +342,18 @@ void storm_aead_encrypt(
     __m128i S[8];
 
     /* absorption phase */
-    INIT(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    INIT(S, key, nonce, WORDS(MRS_N)/2, ABS_TAG);
     ABSORB_DATA(S, h, hlen);
     ABSORB_DATA(S, m, mlen);
     FINALISE(S, hlen, mlen, c + mlen);
-    *clen = mlen + BYTES(STORM_T);
+    *clen = mlen + BYTES(MRS_T);
 
     /* encryption phase */
-    INIT(S, key, c + mlen, WORDS(STORM_T)/2, ENC_TAG);
+    INIT(S, key, c + mlen, WORDS(MRS_T)/2, ENC_TAG);
     ENCRYPT_DATA(S, c, m, mlen);
 }
 
-int storm_aead_decrypt(
+int crypto_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,
@@ -374,25 +362,25 @@ int storm_aead_decrypt(
     )
 {
     int result = -1;
-    ALIGN(64) unsigned char tag[BYTES(STORM_T)];
+    ALIGN(64) unsigned char tag[BYTES(MRS_T)];
     __m128i S[8];
 
-    if (clen < BYTES(STORM_T)) { return -1; }
+    if (clen < BYTES(MRS_T)) { return -1; }
 
     /* decryption phase */
-    INIT(S, key, c + clen - BYTES(STORM_T), WORDS(STORM_T)/2, ENC_TAG);
-    DECRYPT_DATA(S, m, c, clen - BYTES(STORM_T));
-    *mlen = clen - BYTES(STORM_T);
+    INIT(S, key, c + clen - BYTES(MRS_T), WORDS(MRS_T)/2, ENC_TAG);
+    DECRYPT_DATA(S, m, c, clen - BYTES(MRS_T));
+    *mlen = clen - BYTES(MRS_T);
 
     /* absorption phase */
-    INIT(S, key, nonce, WORDS(STORM_N)/2, ABS_TAG);
+    INIT(S, key, nonce, WORDS(MRS_N)/2, ABS_TAG);
     ABSORB_DATA(S, h, hlen);
     ABSORB_DATA(S, m, *mlen);
     FINALISE(S, hlen, *mlen, tag);
 
     /* verify tag */
-    S[0] = _mm_cmpeq_epi8(LOADU(tag +                0), LOADU(c + clen - BYTES(STORM_T)  ));
-    S[1] = _mm_cmpeq_epi8(LOADU(tag + BYTES(STORM_T)/2), LOADU(c + clen - BYTES(STORM_T)/2));
+    S[0] = _mm_cmpeq_epi8(LOADU(tag +                0), LOADU(c + clen - BYTES(MRS_T)  ));
+    S[1] = _mm_cmpeq_epi8(LOADU(tag + BYTES(MRS_T)/2), LOADU(c + clen - BYTES(MRS_T)/2));
     result = (((unsigned long)_mm_movemask_epi8(AND(S[0], S[1])) + 1) >> 16) - 1;
 
     /* burn decrypted plaintext on authentication failure */

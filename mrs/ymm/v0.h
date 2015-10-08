@@ -1,19 +1,12 @@
-#ifndef STORM_OPP_YMM_V0_H
-#define STORM_OPP_YMM_V0_H
+#ifndef MRS_YMM_V0_H
+#define MRS_YMM_V0_H
 
 #include <stdint.h>
 #include <string.h>
 #include <immintrin.h>
 
 #define BYTES(X) (((X) + 7) / 8)
-#define WORDS(X) (((X) + (STORM_W - 1)) / STORM_W)
-
-/* this is x86, so we can just memcpy */
-static uint64_t load64(const void * in) {
-  uint64_t x;
-  memcpy(&x, in, sizeof x);
-  return x;
-}
+#define WORDS(X) (((X) + (MRS_W - 1)) / MRS_W)
 
 #define ADD256(A, B) _mm256_add_epi64((A), (B))
 #define SUB256(A, B) _mm256_sub_epi64((A), (B))

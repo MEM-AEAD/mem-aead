@@ -1,5 +1,5 @@
-#ifndef STORM_OPP_YMM_V1_H
-#define STORM_OPP_YMM_V1_H
+#ifndef MRS_YMM_V1_H
+#define MRS_YMM_V1_H
 
 #include "v0.h"
 
@@ -31,7 +31,7 @@
 
 #define V1_PERMUTE_F(B) do {           \
   int i;                               \
-  for(i = 0; i < STORM_L; ++i) {       \
+  for(i = 0; i < MRS_L; ++i) {         \
     V1_G_F(B[0], B[1], B[2], B[3]);    \
     V1_DIAG_F(B[0], B[1], B[2], B[3]); \
     V1_G_F(B[0], B[1], B[2], B[3]);    \
@@ -41,52 +41,12 @@
 
 #define V1_PERMUTE_B(B) do {           \
   int i;                               \
-  for(i = 0; i < STORM_L; ++i) {       \
+  for(i = 0; i < MRS_L; ++i) {         \
     V1_DIAG_F(B[0], B[1], B[2], B[3]); \
     V1_G_B(B[0], B[1], B[2], B[3]);    \
     V1_DIAG_B(B[0], B[1], B[2], B[3]); \
     V1_G_B(B[0], B[1], B[2], B[3]);    \
   }                                    \
-} while(0)
-
-
-#define V1_MASK_UPDATE_1(L) do {            \
-  L[16] = ROT64(L[0], 11) ^ (L[5] << 13);   \
-} while(0)
-
-#define V1_MASK_UPDATE_2(L) do {    \
-  int i;                            \
-  for(i = 0; i < 16; ++i) {         \
-    L[i] = L[i+1];                  \
-  }                                 \
-} while(0)
-
-#define V1_MASK_UPDATE(L) do {                       \
-  const uint64_t t = ROT64(L[0], 11) ^ (L[5] << 13); \
-  int i;                                             \
-  /* memmove(&L[0], &L[1], 15 * sizeof(L[0]));*/     \
-  for(i = 0; i < 15; ++i) L[i] = L[i+1]; /* BUG? */  \
-  /* STOREU256(&L[ 0], LOADU256(&L[ 1])); */ \
-  /* STOREU256(&L[ 4], LOADU256(&L[ 5])); */ \
-  /* STOREU256(&L[ 8], LOADU256(&L[ 9])); */ \
-  /* STOREU256(&L[12], LOADU256(&L[13])); */ \
-  L[15] = t;                                         \
-} while(0)
-
-#define V1_MASK_ROT_768(L) do {        \
-	const __m256i t = LOADU256(&L[ 0]);  \
-	STOREU256(&L[ 0], LOADU256(&L[ 4])); \
-	STOREU256(&L[ 4], LOADU256(&L[ 8])); \
-	STOREU256(&L[ 8], LOADU256(&L[12])); \
-	STOREU256(&L[12], t);                \
-} while(0)
-
-#define V1_MASK_ROT_256(L) do {        \
-	const __m256i t = LOADU256(&L[12]);  \
-  STOREU256(&L[12], LOADU256(&L[ 8])); \
-  STOREU256(&L[ 8], LOADU256(&L[ 4])); \
-  STOREU256(&L[ 4], LOADU256(&L[ 0])); \
-  STOREU256(&L[ 0], t);                \
 } while(0)
 
 #define V1_ZERO_BLOCK(B) do {      \
@@ -133,20 +93,6 @@
 
 #define V1_COPY_BLOCK(C, B) V1_COPY_BLOCK_N(C, B, 4)
 
-#define V1_XOR_MASK(B, L) do {              \
-  int i;                                    \
-  for(i = 0; i < 4; ++i) {                  \
-    B[i] = XOR256(B[i], LOADU256(&L[4*i])); \
-  }                                         \
-} while(0)
-
-#define V1_XOR_ROTATED_MASK(B, L, R) do {                         \
-  int i;                                                          \
-  for(i = 0; i < 4; ++i) {                                        \
-    B[i] = XOR256(B[i], LOADU256(&L[(4*i + (16 - 4*R/256))%16])); \
-  }                                                               \
-} while(0)
-
 #define V1_ACCUMULATE(T, B) do { \
   int i;                         \
   for(i = 0; i < 4; ++i) {       \
@@ -159,30 +105,6 @@
   for(i = 0; i < n; ++i) {            \
     T[i] = XOR256(B[i], T[i]);        \
   }                                   \
-} while(0)
-
-#define V1_BLOCKCIPHER_F(B, L) do { \
-  V1_XOR_MASK(B, L);                \
-  V1_PERMUTE_F(B);                  \
-  V1_XOR_MASK(B, L);                \
-} while(0)
-
-#define V1_BLOCKCIPHER_B(B, L) do { \
-  V1_XOR_MASK(B, L);                \
-  V1_PERMUTE_B(B);                  \
-  V1_XOR_MASK(B, L);                \
-} while(0)
-
-#define V1_BLOCKCIPHER_ROTATED_F(B, L, R) do { \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
-  V1_PERMUTE_F(B);                             \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
-} while(0)
-
-#define V1_BLOCKCIPHER_ROTATED_B(B, L, R) do { \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
-  V1_PERMUTE_B(B);                             \
-  V1_XOR_ROTATED_MASK(B, L, R);                \
 } while(0)
 
 #endif

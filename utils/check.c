@@ -1,30 +1,17 @@
-/*
-   STORM reference source code package - reference C implementations
-
-   Written in 2014 by Samuel Neves <sneves@dei.uc.pt>
-   Modified in 2015 by Philipp Jovanovic <philipp@jovanovic.io>
-
-   To the extent possible under law, the author(s) have dedicated all copyright
-   and related and neighboring rights to this software to the public domain
-   worldwide. This software is distributed without any warranty.
-
-   You should have received a copy of the CC0 Public Domain Dedication along with
-   this software. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "kat.h"
 
-void aead_encrypt(
+void crypto_aead_encrypt(
         unsigned char *c, size_t *clen,
         const unsigned char *h, size_t hlen,
         const unsigned char *p, size_t plen,
         const unsigned char *nonce,
         const unsigned char *key);
 
-int aead_decrypt(
+int crypto_aead_decrypt(
         unsigned char *p, size_t *plen,
         const unsigned char *h, size_t hlen,
         const unsigned char *c, size_t clen,
@@ -68,13 +55,13 @@ int check(const unsigned char *kat)
         clen = 0;
         mlen = hlen = i;
 
-        aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
+        crypto_aead_encrypt(c, &clen, h, hlen, m, mlen, n, k);
         if( 0 != memcmp(kat, c, clen) ) {place = 1; goto fail;}
 
         memset(m, 0, sizeof m);
         mlen = 0;
 
-        if( 0 != aead_decrypt(m, &mlen, h, hlen, c, clen, n, k) )
+        if( 0 != crypto_aead_decrypt(m, &mlen, h, hlen, c, clen, n, k) )
             {place = 2; goto fail;}
 
         if( 0 != memcmp(m, w, mlen) ) {place = 3; goto fail;}
