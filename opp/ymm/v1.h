@@ -1,5 +1,5 @@
-#ifndef STORM_OPP_YMM_V1_H
-#define STORM_OPP_YMM_V1_H
+#ifndef OPP_YMM_V1_H
+#define OPP_YMM_V1_H
 
 #include "v0.h"
 
@@ -31,7 +31,7 @@
 
 #define V1_PERMUTE_F(B) do {           \
   int i;                               \
-  for(i = 0; i < STORM_R; ++i) {       \
+  for(i = 0; i < OPP_R; ++i) {         \
     V1_G_F(B[0], B[1], B[2], B[3]);    \
     V1_DIAG_F(B[0], B[1], B[2], B[3]); \
     V1_G_F(B[0], B[1], B[2], B[3]);    \
@@ -41,7 +41,7 @@
 
 #define V1_PERMUTE_B(B) do {           \
   int i;                               \
-  for(i = 0; i < STORM_R; ++i) {       \
+  for(i = 0; i < OPP_R; ++i) {         \
     V1_DIAG_F(B[0], B[1], B[2], B[3]); \
     V1_G_B(B[0], B[1], B[2], B[3]);    \
     V1_DIAG_B(B[0], B[1], B[2], B[3]); \
@@ -50,11 +50,11 @@
 } while(0)
 
 
-#define V1_PHI_UPDATE_1(L) do {             \
+#define V1_ALPHA_UPDATE_1(L) do {           \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);   \
 } while(0)
 
-#define V1_PHI_UPDATE_2(L) do {     \
+#define V1_ALPHA_UPDATE_2(L) do {   \
   int i;                            \
   for(i = 0; i < 16; ++i) {         \
     L[i] = L[i+1];                  \
@@ -62,7 +62,7 @@
 } while(0)
 
 #if 0
-#define V1_PHI_UPDATE(L) do {                        \
+#define V1_ALPHA_UPDATE(L) do {                        \
   const uint64_t t = ROT64(L[0], 11) ^ (L[5] << 13); \
   /* int i;  */                                      \
   memmove(&L[0], &L[1], 15 * sizeof(L[0]));          \
@@ -77,7 +77,7 @@
 } while(0)
 #endif
 
-#define V1_PHI_UPDATE(L) do {             \
+#define V1_ALPHA_UPDATE(L) do {           \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13); \
   STOREU256(&L[ 0], LOADU256(&L[ 1]));    \
   STOREU256(&L[ 4], LOADU256(&L[ 5]));    \
@@ -85,7 +85,7 @@
   STOREU256(&L[12], LOADU256(&L[13]));    \
 } while(0)
 
-#define V1_SIGMA_UPDATE(L) do {                                  \
+#define V1_BETA_UPDATE(L) do {                                   \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);                        \
   STOREU256(&L[ 0], XOR256(LOADU256(&L[ 0]), LOADU256(&L[ 1]))); \
   STOREU256(&L[ 4], XOR256(LOADU256(&L[ 4]), LOADU256(&L[ 5]))); \
@@ -93,7 +93,7 @@
   STOREU256(&L[12], XOR256(LOADU256(&L[12]), LOADU256(&L[13]))); \
 } while(0)
 
-#define V1_SIGMA2_UPDATE(L) do {                                 \
+#define V1_BETA2_UPDATE(L) do {                                  \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);                        \
   L[17] = ROT64(L[1], 11) ^ (L[6] << 13);                        \
   STOREU256(&L[ 0], XOR256(LOADU256(&L[ 0]), LOADU256(&L[ 2]))); \
@@ -102,7 +102,7 @@
   STOREU256(&L[12], XOR256(LOADU256(&L[12]), LOADU256(&L[14]))); \
 } while(0)
 
-#define V1_LAMBDA_UPDATE(L) do {                                                           \
+#define V1_GAMMA_UPDATE(L) do {                                                            \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);                                                  \
   L[17] = ROT64(L[1], 11) ^ (L[6] << 13);                                                  \
   STOREU256(&L[ 0], XOR256(XOR256(LOADU256(&L[ 0]), LOADU256(&L[ 1])), LOADU256(&L[ 2]))); \
@@ -112,7 +112,7 @@
 } while(0)
 
 #if 0
-#define V1_SIGMA_UPDATE(L) do {                       \
+#define V1_BETA_UPDATE(L) do {                       \
   int i;                                              \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
   for(i = 0; i < 16; ++i) {                           \
@@ -120,7 +120,7 @@
   }                                                   \
 } while(0)
 
-#define V1_SIGMA2_UPDATE(L) do {                      \
+#define V1_BETA2_UPDATE(L) do {                      \
   int i;                                              \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
   L[17] = ROT64(L[1], 11) ^ (L[6] << 13);             \
@@ -129,7 +129,7 @@
   }                                                   \
 } while(0)
 
-#define V1_SIGMA3_UPDATE(L) do {                      \
+#define V1_BETA3_UPDATE(L) do {                      \
   int i;                                              \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
   L[17] = ROT64(L[1], 11) ^ (L[6] << 13);             \
@@ -140,7 +140,7 @@
   }                                                   \
 } while(0)
 
-#define V1_LAMBDA_UPDATE(L) do {                      \
+#define V1_GAMMA_UPDATE(L) do {                      \
   int i;                                              \
   L[16] = ROT64(L[0], 11) ^ (L[5] << 13);             \
   L[17] = ROT64(L[1], 11) ^ (L[6] << 13);             \
