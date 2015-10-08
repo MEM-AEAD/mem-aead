@@ -1,7 +1,7 @@
 #include "mro.h"
 
 #if defined(MRO_DEBUG)
-#include "../debug.h"
+#include "debug.h"
 #endif
 
 #define MRO_W 64           /* word size */
@@ -391,7 +391,7 @@ int mro_verify_tag(const unsigned char * tag1, const unsigned char * tag2)
 
 
 /* high level interface functions */
-void mro_aead_encrypt(
+void crypto_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *m, size_t mlen,
@@ -427,7 +427,7 @@ void mro_aead_encrypt(
     burn(le, 0, sizeof(mro_state_t));
 }
 
-int mro_aead_decrypt(
+int crypto_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,

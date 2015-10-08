@@ -580,7 +580,7 @@ int opp_verify_tag(const unsigned char * tag1, const unsigned char * tag2)
 
 
 /* high level interface functions */
-void opp_aead_encrypt(
+void crypto_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *m, size_t mlen,
@@ -613,7 +613,7 @@ void opp_aead_encrypt(
     burn(le, 0, sizeof(opp_state_t));
 }
 
-int opp_aead_decrypt(
+int crypto_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,

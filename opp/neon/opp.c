@@ -504,7 +504,7 @@ do                                                                              
 
 static void* (* const volatile burn)(void*, int, size_t) = memset;
 
-void opp_aead_encrypt(
+void crypto_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *m, size_t mlen,
@@ -536,7 +536,7 @@ void opp_aead_encrypt(
     STOREU(c + mlen + BYTES(OPP_T)/2, SA[1]);
 }
 
-int opp_aead_decrypt(
+int crypto_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,

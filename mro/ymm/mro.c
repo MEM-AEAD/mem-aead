@@ -256,7 +256,7 @@ static void mro_decrypt_data(
 }
 
 /* high level interface functions */
-void mro_aead_encrypt(
+void crypto_aead_encrypt(
     unsigned char *c, size_t *clen,
     const unsigned char *h, size_t hlen,
     const unsigned char *m, size_t mlen,
@@ -273,7 +273,7 @@ void mro_aead_encrypt(
   *clen = mlen + BYTES(MRO_T);
 }
 
-int mro_aead_decrypt(
+int crypto_aead_decrypt(
     unsigned char *m, size_t *mlen,
     const unsigned char *h, size_t hlen,
     const unsigned char *c, size_t clen,
