@@ -1,7 +1,9 @@
 #include "opp.h"
 
 #if defined(OPP_DEBUG)
-#include "debug.h"
+#include <stdio.h>
+void print_state(uint64_t S[16]);
+void print_bytes(const uint8_t * in, size_t inlen);
 #endif
 
 #define OPP_W 64           /* word size */
@@ -184,7 +186,7 @@ static OPP_INLINE void opp_init_mask(opp_state_t mask, const unsigned char * k, 
 
 #if defined(OPP_DEBUG)
     printf("SETUP MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 
 }
@@ -259,9 +261,9 @@ static OPP_INLINE void opp_absorb_block(opp_state_t state, opp_state_t mask, con
     printf("IN:\n");
     print_bytes(in, BYTES(OPP_B));
     printf("\nSTATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 }
 
@@ -297,9 +299,9 @@ static OPP_INLINE void opp_absorb_lastblock(opp_state_t state, opp_state_t mask,
     printf("IN:\n");
     print_bytes(in, inlen);
     printf("\nSTATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
     burn(lastblock, 0, BYTES(OPP_B));
 }
@@ -336,9 +338,9 @@ static OPP_INLINE void opp_encrypt_block(opp_state_t state, opp_state_t mask, ui
     printf("OUT:\n");
     print_bytes(out, BYTES(OPP_B));
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 }
 
@@ -377,9 +379,9 @@ static OPP_INLINE void opp_encrypt_lastblock(opp_state_t state, opp_state_t mask
     printf("OUT:\n");
     print_bytes(out, inlen);
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
     burn(lastblock, 0, BYTES(OPP_B));
 }
@@ -416,9 +418,9 @@ static OPP_INLINE void opp_decrypt_block(opp_state_t state, opp_state_t mask, ui
     printf("OUT:\n");
     print_bytes(out, BYTES(OPP_B));
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 }
 
@@ -463,9 +465,9 @@ static OPP_INLINE void opp_decrypt_lastblock(opp_state_t state, opp_state_t mask
     printf("OUT:\n");
     print_bytes(out, inlen);
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
     burn(lastblock, 0, BYTES(OPP_B));
 }
@@ -559,9 +561,9 @@ void opp_finalise(opp_state_t sa, opp_state_t se, opp_state_t mask, unsigned cha
     printf("EXTRACTING TAG:\n");
     print_bytes(tag, BYTES(OPP_T));
     printf("STATE:\n");
-    print_state(sa);
+    print_state(sa->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
     burn(block, 0, BYTES(OPP_B));
 }

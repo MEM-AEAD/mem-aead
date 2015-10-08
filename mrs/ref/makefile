@@ -3,7 +3,7 @@ CFLAGS=-O3 -march=native -std=c89 -Wall -Wextra -pedantic -Wno-long-long
 all: check bench
 
 debug:
-	@$(CC) $(CFLAGS) -DMRS_DEBUG -o debug ../../utils/debug.c mrs.c
+	@$(CC) $(CFLAGS) -DMRS_DEBUG -o debug ../../utils/debug.c ../../utils/io.c mrs.c
 	@./debug
 	@rm debug
 

@@ -1,18 +1,16 @@
-#ifndef MRO_DEBUG_H
-#define MRO_DEBUG_H
-
+#include <stddef.h>
+#include <stdint.h>
 #include <inttypes.h>
 #include <stdio.h>
 
 #define FMT "016" PRIX64
 
-static void print_state(mro_state_t state)
+void print_state(uint64_t S[16])
 {
     static const char fmt[] = "%" FMT " "
                               "%" FMT " "
                               "%" FMT " "
                               "%" FMT "\n";
-    const mro_word_t * S = state->S;
     printf(fmt, S[ 0],S[ 1],S[ 2],S[ 3]);
     printf(fmt, S[ 4],S[ 5],S[ 6],S[ 7]);
     printf(fmt, S[ 8],S[ 9],S[10],S[11]);
@@ -20,7 +18,7 @@ static void print_state(mro_state_t state)
     printf("\n");
 }
 
-static void print_bytes(const uint8_t * in, size_t inlen)
+void print_bytes(const uint8_t * in, size_t inlen)
 {
     size_t i;
     for (i = 0; i < inlen; ++i)
@@ -33,4 +31,3 @@ static void print_bytes(const uint8_t * in, size_t inlen)
     }
     printf("\n");
 }
-#endif

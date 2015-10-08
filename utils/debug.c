@@ -17,42 +17,7 @@ int crypto_aead_decrypt(
         const unsigned char *nonce,
         const unsigned char *key);
 
-/*
-#define FMT "016" PRIX64
-
-typedef uint64_t word_t;
-
-typedef struct state__
-{
-    word_t S[16];
-} state_t[1];
-
-static void print_state(state_t state)
-{
-    static const char fmt[] = "%" FMT " "
-                              "%" FMT " "
-                              "%" FMT " "
-                              "%" FMT "\n";
-    const word_t * S = state->S;
-    printf(fmt, S[ 0],S[ 1],S[ 2],S[ 3]);
-    printf(fmt, S[ 4],S[ 5],S[ 6],S[ 7]);
-    printf(fmt, S[ 8],S[ 9],S[10],S[11]);
-    printf(fmt, S[12],S[13],S[14],S[15]);
-    printf("\n");
-}*/
-
-static void print_bytes(const unsigned char *in, size_t inlen)
-{
-    size_t i;
-    for (i = 0; i < inlen; ++i) {
-        printf("%02X ", in[i]);
-        if (i%16 == 15) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
+void print_bytes(const uint8_t * in, size_t inlen);
 
 #define HSIZE 1024
 #define MSIZE 1024

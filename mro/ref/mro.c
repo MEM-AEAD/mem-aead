@@ -1,7 +1,9 @@
 #include "mro.h"
 
 #if defined(MRO_DEBUG)
-#include "debug.h"
+#include <stdio.h>
+void print_state(uint64_t S[16]);
+void print_bytes(const uint8_t * in, size_t inlen);
 #endif
 
 #define MRO_W 64           /* word size */
@@ -149,7 +151,7 @@ static MRO_INLINE void mro_init_mask(mro_state_t mask, const unsigned char * k, 
 
 #if defined(MRO_DEBUG)
     printf("SETUP MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 }
 
@@ -223,9 +225,9 @@ static MRO_INLINE void mro_absorb_block(mro_state_t state, mro_state_t mask, con
     printf("IN:\n");
     print_bytes(in, BYTES(MRO_B));
     printf("\nSTATE:\n");
-    print_state(state);
+    print_state(state->S);
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 }
 
@@ -273,7 +275,7 @@ static MRO_INLINE void mro_encrypt_block(mro_state_t mask, mro_state_t tag, size
     printf("OUT:\n");
     print_bytes(out, BYTES(MRO_B));
     printf("MASK:\n");
-    print_state(mask);
+    print_state(mask->S);
 #endif
 }
 
@@ -371,7 +373,7 @@ void mro_output_tag(mro_state_t state, unsigned char * tag)
 
 #if defined(MRO_DEBUG)
     printf("EXTRACTING TAG:\n");
-    print_state(state);
+    print_state(state->S);
     printf("TAG:\n");
     print_bytes(tag, BYTES(MRO_T));
 #endif

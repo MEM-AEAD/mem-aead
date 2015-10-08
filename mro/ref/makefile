@@ -3,7 +3,7 @@ CFLAGS=-O3 -std=c89 -Wall -Wextra -pedantic -Wno-long-long
 all: check bench
 
 debug:
-	@$(CC) $(CFLAGS) -DMRO_DEBUG -o debug ../../utils/debug.c mro.c
+	@$(CC) $(CFLAGS) -DMRO_DEBUG -o debug ../../utils/debug.c ../../utils/io.c mro.c
 	@./debug
 	@rm debug
 

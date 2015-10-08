@@ -1,7 +1,9 @@
 #include "mrs.h"
 
 #if defined(MRS_DEBUG)
-#include "debug.h"
+#include <stdio.h>
+void print_state(uint64_t S[16]);
+void print_bytes(const uint8_t * in, size_t inlen);
 #endif
 
 #define MRS_W 64              /* word size */
@@ -136,7 +138,7 @@ static MRS_INLINE void mrs_absorb_block(mrs_state_t state, const unsigned char *
     printf("ABSORBING BLOCK:\n");
     print_bytes(in, BYTES(MRS_B));
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
 #endif
 }
 
@@ -163,7 +165,7 @@ static MRS_INLINE void mrs_encrypt_block(mrs_state_t state, unsigned char * out,
     printf("ENCRYPTING BLOCK:\n");
     print_bytes(in, BYTES(MRS_R));
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
 #endif
 }
 
@@ -192,7 +194,7 @@ static MRS_INLINE void mrs_decrypt_block(mrs_state_t state, unsigned char * out,
     printf("DECRYPTING BLOCK:\n");
     print_bytes(in, BYTES(MRS_R));
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
 #endif
 }
 
@@ -224,7 +226,7 @@ static MRS_INLINE void mrs_decrypt_lastblock(mrs_state_t state, unsigned char * 
     printf("DECRYPTING LASTBLOCK:\n");
     print_bytes(lastblock, BYTES(MRS_R));
     printf("STATE:\n");
-    print_state(state);
+    print_state(state->S);
 #endif
 
     burn(lastblock, 0, sizeof lastblock);
@@ -251,7 +253,7 @@ void mrs_init(mrs_state_t state, const unsigned char * k, const unsigned char * 
 
 #if defined(MRS_DEBUG)
     printf("SETUP (%02X):\n", tag);
-    print_state(state);
+    print_state(state->S);
 #endif
 }
 
@@ -320,7 +322,7 @@ void mrs_finalise(mrs_state_t state, size_t hlen, size_t mlen, unsigned char * t
 
 #if defined(MRS_DEBUG)
     printf("FINALISED:\n");
-    print_state(state);
+    print_state(state->S);
 #endif
 
     burn(lastblock, 0, BYTES(MRS_R));
