@@ -4,7 +4,7 @@
 The specification of the MEM family of AEAD schemes can be found on [ePrint](TODO). This repository provides implementations for the following ciphers:
 
 * **MRO:** fully misuse-resistant, high-performance, based on the tweakable Masked Even-Mansour (MEM) block cipher
-* **MRS:** fully misuse-resistant, high-performance, Sponge-based
+* **MRS:** fully misuse-resistant, high-performance, based on the Sponge construction
 * **OPP:** nonce-respecting, high-performance, based on the tweakable Masked Even-Mansour (MEM) block cipher
 
 All schemes leverage a round-reduced [BLAKE2](https://blake2.net/) permutation.
