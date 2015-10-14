@@ -1,5 +1,8 @@
 # MEM AEAD Source Code Package
 
+## Warning
+The cipher designs of this source code package are very new and still **lack extensive analysis**. Therefore, **do not use** them in your applications just now!
+
 ## About
 The specification of the MEM family of AEAD schemes can be found on [ePrint](TODO). This repository provides implementations for the following ciphers:
 
@@ -7,7 +10,7 @@ The specification of the MEM family of AEAD schemes can be found on [ePrint](TOD
 * **MRS:** fully misuse-resistant, high-performance, based on the Sponge construction
 * **OPP:** nonce-respecting, high-performance, based on the tweakable Masked Even-Mansour (MEM) block cipher
 
-All schemes leverage a round-reduced [BLAKE2](https://blake2.net/) permutation.
+All schemes leverage a round-reduced [BLAKE2b](https://blake2.net/) permutation.
 
 ## Designers
 
