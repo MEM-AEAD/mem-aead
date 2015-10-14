@@ -8,11 +8,11 @@ debug:
 	@rm debug
 
 bench: opp.c
-	$(CC) $(CFLAGS) -o bench ../../utils/bench.c opp.c
-	./bench
-	rm bench
+	@$(CC) $(CFLAGS) -o bench ../../utils/bench.c opp.c
+	@./bench
+	@rm bench
 
 check: opp.c
-	$(CC) $(CFLAGS) -I../ -o check ../../utils/check.c opp.c
-	./check
-	rm check
+	@$(CC) $(CFLAGS) -I../ -o check ../../utils/check.c opp.c
+	@./check
+	@rm check
