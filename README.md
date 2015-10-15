@@ -30,7 +30,9 @@ The specification of the schemes together with many more information can be foun
     - 2-pass
     - constant-time
 
-### Performance with 4 BLAKE2b Rounds
+### Performance
+
+Values for **4 BLAKE2b rounds** given in *cycles per byte* (cpb):
 
 Platform     | Impl. |   OPP |   MRO |  MRS
 -------------|-------|-------|-------|------
@@ -39,7 +41,7 @@ Sandy Bridge | AVX   |  1.24 |  2.41 | 2.55
 Haswell      | AVX2  |  0.55 |  1.06 | 2.40
 
 
-### Performance with 6 BLAKE2b Rounds
+Values for **6 BLAKE2b rounds** given in *cycles per byte* (cpb):
 
 Platform     | Impl. |  OPP |   MRO |   MRS
 -------------|-------|------|-------|------
