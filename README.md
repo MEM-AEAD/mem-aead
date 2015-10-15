@@ -6,7 +6,7 @@ The cipher designs of this source code package are very new and still **lack ext
 
 
 ## About
-This repository provides implementations for the AEAD modes **OPP**, **MRO** and **MRS** which are all instantiated with a round-reduced [BLAKE2b](https://blake2.net/) permutation and target a 256-bit security level.
+This repository provides implementations for the AEAD modes **OPP**, **MRO** and **MRS** instantiated with a round-reduced [BLAKE2b](https://blake2.net/) permutation. All ciphers target a 256-bit security level.
 
 The specification of the schemes together with many more information can be found at [https://eprint.iacr.org/2015/999](https://eprint.iacr.org/2015/999).
 
@@ -30,7 +30,7 @@ The specification of the schemes together with many more information can be foun
     - 2-pass
     - constant-time
 
-### Performance with 4 Rounds
+### Performance with 4 BLAKE2b Rounds
 
 Platform     | Impl. |   OPP |   MRO |  MRS
 -------------|-------|-------|-------|------
@@ -39,7 +39,7 @@ Sandy Bridge | AVX   |  1.24 |  2.41 | 2.55
 Haswell      | AVX2  |  0.55 |  1.06 | 2.40
 
 
-### Performance with 6 Rounds
+### Performance with 6 BLAKE2b Rounds
 
 Platform     | Impl. |  OPP |   MRO |   MRS
 -------------|-------|------|-------|------
