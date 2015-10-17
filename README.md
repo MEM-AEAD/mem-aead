@@ -57,7 +57,5 @@ Haswell      | AVX2  | 0.75 |  1.39 |  3.58
 * [Bart Mennink](http://homes.esat.kuleuven.be/~bmennink/)
 * [Samuel Neves](https://eden.dei.uc.pt/~sneves/)
 
-Code written by Philipp Jovanovic and Samuel Neves.
-
 ##License
-The MEM AEAD source code is released under the [CC0 license](https://creativecommons.org/publicdomain/zero/1.0/). The full license text is included in the file `LICENSE`.
+The MEM AEAD source code is copyright (c) 2015 Philipp Jovanovic and Samuel Neves, and released under the [CC0 license](https://creativecommons.org/publicdomain/zero/1.0/). The full license text is included in the file `LICENSE`.
