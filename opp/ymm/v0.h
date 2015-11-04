@@ -1,3 +1,9 @@
+/*
+    OPP - MEM AEAD source code package
+
+    :copyright: (c) 2015 by Philipp Jovanovic and Samuel Neves
+    :license: Creative Commons CC0 1.0
+*/
 #ifndef OPP_YMM_V0_H
 #define OPP_YMM_V0_H
 

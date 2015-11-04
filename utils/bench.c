@@ -1,3 +1,9 @@
+/*
+    MEM AEAD source code package
+
+    :copyright: (c) 2015 by Philipp Jovanovic and Samuel Neves
+    :license: Creative Commons CC0 1.0
+*/
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

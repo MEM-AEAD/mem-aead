@@ -1,3 +1,9 @@
+/*
+    MRS - MEM AEAD source code package
+
+    :copyright: (c) 2015 by Philipp Jovanovic and Samuel Neves
+    :license: Creative Commons CC0 1.0
+*/
 #ifndef MRS_YMM_V1_H
 #define MRS_YMM_V1_H
 

@@ -1,3 +1,9 @@
+/*
+    MRO - MEM AEAD source code package
+
+    :copyright: (c) 2015 by Philipp Jovanovic and Samuel Neves
+    :license: Creative Commons CC0 1.0
+*/
 #ifndef MRO_YMM_V4_H
 #define MRO_YMM_V4_H
 
