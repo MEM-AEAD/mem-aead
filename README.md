@@ -1,17 +1,20 @@
 # MEM AEAD Source Code Package
 
 ## Warning
+
 The cipher designs of this source code package are very new and still **lack extensive analysis**. Therefore, **do not use** them in your applications just now!
 
 
 
 ## About
+
 This repository provides implementations for the AEAD modes **OPP**, **MRO** and **MRS** instantiated with a round-reduced [BLAKE2b](https://blake2.net/) permutation. All ciphers target a 256-bit security level.
 
 The specification of the schemes together with many more information can be found at [https://eprint.iacr.org/2015/999](https://eprint.iacr.org/2015/999).
 
 
 ### Features
+
 * **OPP:**
     - based on the tweakable Masked Even-Mansour (MEM) block cipher
     - requires nonce-uniqueness
@@ -58,4 +61,5 @@ Haswell      | AVX2  | 0.75 |  1.39 |  3.58
 * [Samuel Neves](https://eden.dei.uc.pt/~sneves/)
 
 ##License
+
 The MEM AEAD source code is copyright (c) 2015 Philipp Jovanovic and Samuel Neves, and released under the [CC0 license](https://creativecommons.org/publicdomain/zero/1.0/). The full license text is included in the file `LICENSE`.
