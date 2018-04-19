@@ -531,20 +531,16 @@ void opp_decrypt_data(opp_state_t state, opp_state_t mask, unsigned char * out, 
     }
 }
 
-void opp_finalise(opp_state_t sa, opp_state_t se, opp_state_t mask, unsigned char *tag, size_t hlen, size_t mlen)
+void opp_finalise(opp_state_t sa, opp_state_t se, opp_state_t mask, unsigned char *tag)
 {
-    size_t i, j;
+    size_t i;
     const size_t n = WORDS(OPP_B);
     opp_word_t * SA = sa->S;
     opp_word_t * SE = se->S;
     opp_word_t * L = mask->S;
     uint8_t block[BYTES(OPP_B)];
 
-    /* determine how often to update the mask depending on hlen and mlen */
-    i = BYTES(OPP_B);
-    j = 2 + ( ( mlen % i ) + i - 1 ) / i - ( ( hlen % i ) + i - 1 ) / i;
-
-    for (i = 0; i < j; ++i)
+    for (i = 0; i < 2; ++i)
     {
         opp_beta(mask);
     }
@@ -612,7 +608,7 @@ void crypto_aead_encrypt(
     *clen = mlen + BYTES(OPP_T);
 
     /* finalise and extract tag */
-    opp_finalise(sa, se, la, c + mlen, hlen, mlen);
+    opp_finalise(sa, se, le, c + mlen);
 
     /* empty buffers */
     burn(sa, 0, sizeof(opp_state_t));
@@ -649,7 +645,7 @@ int crypto_aead_decrypt(
     *mlen = clen - BYTES(OPP_T);
 
     /* finalise and extract tag */
-    opp_finalise(sa, se, la, tag, hlen, *mlen);
+    opp_finalise(sa, se, le, tag);
 
     /* verify tag */
     result = opp_verify_tag(c + clen - BYTES(OPP_T), tag);

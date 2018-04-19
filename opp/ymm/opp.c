@@ -187,19 +187,10 @@ static void opp_decrypt_data(__m256i T[4], uint8_t * m, const uint8_t * c, size_
   }
 }
 
-static void opp_tag(__m256i * Te, const __m256i * Ta, uint64_t * L, size_t hlen, size_t mlen) {
-  const int mode =   (hlen % BYTES(OPP_B) != 0) +
-                   2*(mlen % BYTES(OPP_B) != 0);
-  switch(mode) {
-  case 2: /* hlen == 128, mlen != 128: i2 = 0 -> 3 */
+static void opp_tag(__m256i * Te, const __m256i * Ta, uint64_t * L) {
+  size_t i;
+  for(i = 0; i < 2; ++i) {
     V1_BETA_UPDATE(L);
-  case 0: /* hlen == 128, mlen == 128: i2 = 0 -> 2 */
-  case 3: /* hlen != 128, mlen != 128: i2 = 1 -> 3 */
-    V1_BETA2_UPDATE(L);
-    break;
-  case 1: /* hlen != 128, mlen == 128: i2 = 1 -> 2 */
-    V1_BETA_UPDATE(L);
-    break;
   }
   V1_BLOCKCIPHER_F(Te, L);
   V1_ACCUMULATE(Te, Ta);
@@ -247,7 +238,7 @@ void crypto_aead_encrypt(
 
   opp_hash_data(Ta, h, hlen, Ka);
   opp_encrypt_data(Te, c, m, mlen, Ke);
-  opp_tag(Te, Ta, Ka, hlen, mlen);
+  opp_tag(Te, Ta, Ke);
 
 #if defined(OPP_DEBUG)
   print_state(Te);
@@ -286,7 +277,7 @@ int crypto_aead_decrypt(
 
   opp_hash_data(Ta, h, hlen, Ka);
   opp_decrypt_data(Te, m, c, clen - BYTES(OPP_T), Ke);
-  opp_tag(Te, Ta, Ka, hlen, *mlen);
+  opp_tag(Te, Ta, Ke);
 
   Te[0] = _mm256_cmpeq_epi8(Te[0], LOADU256(c + clen - BYTES(OPP_T)));
   return (( (_mm256_movemask_epi8(Te[0]) & 0xFFFFFFFFULL) + 1) >> 32) - 1;

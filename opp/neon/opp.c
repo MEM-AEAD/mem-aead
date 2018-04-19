@@ -480,12 +480,11 @@ do                                                                              
     }                                                                              \
 } while(0)
 
-#define FINALISE(SA, SE, L, HLEN, MLEN)                                         \
+#define FINALISE(SA, SE, L)                                                     \
 do                                                                              \
 {                                                                               \
-    size_t i = BYTES(OPP_B);                                                    \
-    size_t j = 2 + ( ( MLEN % i ) + i - 1 ) / i - ( ( HLEN % i ) + i - 1 ) / i; \
-    for(i = 0; i < j; ++i)                                                      \
+    size_t i;                                                                   \
+    for(i = 0; i < 2; ++i)                                                      \
     {                                                                           \
        BETA(L);                                                                 \
     }                                                                           \
@@ -535,7 +534,7 @@ void crypto_aead_encrypt(
     *clen = mlen + BYTES(OPP_T);
 
     /* finalise */
-    FINALISE(SA, SE, LA, hlen, mlen);
+    FINALISE(SA, SE, LE);
 
     /* extract tag */
     STOREU(c + mlen, SA[0]);
@@ -571,7 +570,7 @@ int crypto_aead_decrypt(
     *mlen = clen - BYTES(OPP_T);
 
     /* finalise */
-    FINALISE(SA, SE, LA, hlen, *mlen);
+    FINALISE(SA, SE, LE);
 
     /* verify tag */
     T[0] = vceqq_u32( U64TOU32(SA[0]), U8TOU32(vld1q_u8((uint8_t *)(c + clen - BYTES(OPP_T)  ))) );
